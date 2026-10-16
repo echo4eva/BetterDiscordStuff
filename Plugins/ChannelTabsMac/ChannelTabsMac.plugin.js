@@ -2,7 +2,7 @@
  * @name ChannelTabsMac
  * @author samfundev, l0c4lh057, CarJem Generations
  * @description ChannelTabs with navigation beside the macOS window controls.
- * @version 2.8.9-mac.6
+ * @version 2.8.9-mac.7
  * @authorId 76052829285916672
  * @donate https://github.com/sponsors/samfundev
  * @source https://github.com/echo4eva/BetterDiscordStuff/blob/master/src/ChannelTabsMac/index.jsx
@@ -31,6 +31,13 @@
 
 @else@*/
 const CHANGES = {
+	"2.8.9-mac.7": {
+		added: ["Close Discord window from last tab shortcut"],
+		fixed: [
+			"Make middle thread browser scrollable",
+			"Keep thread browser open across tab switches",
+		],
+	},
 	"2.8.9-mac.6": {
 		added: ["Open ChannelTabsMac bookmarks with tab shortcut"],
 	},
@@ -4526,12 +4533,13 @@ html:not(.platform-win) #channelTabs-settingsMenu {
 		if (
 			!e.repeat &&
 			!e.isComposing &&
-			TopBarRef.current?.state.tabs.length > 1 &&
+			TopBarRef.current &&
 			matchesShortcut(e, getCloseTabShortcut(this.settings))
 		) {
 			e.preventDefault();
 			e.stopPropagation();
-			this.closeCurrentTab();
+			if (TopBarRef.current.state.tabs.length > 1) this.closeCurrentTab();
+			else window.close();
 			return;
 		}
 		const keybinds = [
@@ -4912,7 +4920,7 @@ html:not(.platform-win) #channelTabs-settingsMenu {
 							id: "closeTabShortcut",
 							type: "keybind",
 							name: "Close current tab",
-							note: "Default: Option + W. Click to record a different shortcut, or clear it to turn this off.",
+							note: "Default: Option + W. Closes the Discord window on the last tab. Discord's native Command + W shortcut may take priority if you assign it here. Click to record a different shortcut, or clear it to turn this off.",
 							value: getCloseTabShortcut(this.settings),
 							max: 4,
 							clearable: true,

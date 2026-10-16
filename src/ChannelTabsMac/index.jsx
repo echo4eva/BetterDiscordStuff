@@ -4602,12 +4602,13 @@ html:not(.platform-win) #channelTabs-settingsMenu {
 		if (
 			!e.repeat &&
 			!e.isComposing &&
-			TopBarRef.current?.state.tabs.length > 1 &&
+			TopBarRef.current &&
 			matchesShortcut(e, getCloseTabShortcut(this.settings))
 		) {
 			e.preventDefault();
 			e.stopPropagation();
-			this.closeCurrentTab();
+			if (TopBarRef.current.state.tabs.length > 1) this.closeCurrentTab();
+			else window.close();
 			return;
 		}
 		const keybinds = [
@@ -5010,7 +5011,7 @@ html:not(.platform-win) #channelTabs-settingsMenu {
 							id: "closeTabShortcut",
 							type: "keybind",
 							name: "Close current tab",
-							note: "Default: Option + W. Click to record a different shortcut, or clear it to turn this off.",
+							note: "Default: Option + W. Closes the Discord window on the last tab. Discord's native Command + W shortcut may take priority if you assign it here. Click to record a different shortcut, or clear it to turn this off.",
 							value: getCloseTabShortcut(this.settings),
 							max: 4,
 							clearable: true,
