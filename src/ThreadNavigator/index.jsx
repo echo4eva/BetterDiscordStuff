@@ -137,7 +137,6 @@ module.exports = class ThreadNavigator {
 		this.mountNativeButton(layout.toolbar);
 		if (this.channel?.parentId !== channel.parentId) {
 			this.browserLimit = 40;
-			if (this.channel) this.full = false;
 		}
 		this.channel = channel;
 		this.applyMode();

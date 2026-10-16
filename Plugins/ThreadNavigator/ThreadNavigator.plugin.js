@@ -2,7 +2,7 @@
  * @name ThreadNavigator
  * @author echo4eva
  * @description A central thread browser that opens selected threads in Discord’s side chat.
- * @version 0.2.1
+ * @version 0.2.2
  * @source https://github.com/echo4eva/BetterDiscordStuff/blob/master/src/ThreadNavigator/index.jsx
  */
 /*@cc_on
@@ -29,6 +29,13 @@
 
 @else@*/
 const CHANGES = {
+	"0.2.2": {
+		fixed: ["Keep thread browser open across tab switches"],
+		added: [
+			"Open ChannelTabsMac bookmarks with tab shortcut",
+			"Configurable close-tab shortcut for ChannelTabsMac",
+		],
+	},
 	"0.2.1": {
 		improved: ["Fill thread browser and match Discord scrolling"],
 	},
@@ -168,7 +175,6 @@ module.exports = class ThreadNavigator {
 		this.mountNativeButton(layout.toolbar);
 		if (this.channel?.parentId !== channel.parentId) {
 			this.browserLimit = 40;
-			if (this.channel) this.full = false;
 		}
 		this.channel = channel;
 		this.applyMode();
