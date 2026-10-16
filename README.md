@@ -10,6 +10,10 @@ This fork includes [ChannelTabsMac](Plugins/ChannelTabsMac/README.md), a macOS v
 
 [ThreadNavigator](Plugins/ThreadNavigator/README.md) turns Discord's Threads button into a searchable browser in the channel chat area. Selecting a thread opens its chat on the right while the browser stays visible. It includes loaded archived-thread filters and optional one-click opening in ChannelTabsMac tabs.
 
+## CategoryAlerts
+
+[CategoryAlerts](Plugins/CategoryAlerts/README.md) notifies you when a new channel is created in a category you watch, such as a ticket section, since Discord has no notification setting for categories.
+
 ### Problems
 
 If you have a problem with something, please [open an issue about it](https://github.com/samfundev/BetterDiscordStuff/issues/new/choose).

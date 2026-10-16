@@ -8,6 +8,7 @@
 		"build": "node lib/dev.ts --build",
 		"build:mac": "node lib/dev.ts --build --mac",
 		"build:threads": "node lib/dev.ts --build --thread-navigator",
+		"build:alerts": "node lib/dev.ts --build --category-alerts",
 		"format": "prettier --write ."
 	},
 	"maintainers": [

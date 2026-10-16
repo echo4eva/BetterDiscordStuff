@@ -7,7 +7,9 @@ const ctx = await context({
 		? ["src/ChannelTabsMac/index.jsx"]
 		: process.argv.includes("--thread-navigator")
 			? ["src/ThreadNavigator/index.jsx"]
-			: await Array.fromAsync(glob("src/**/index.*")),
+			: process.argv.includes("--category-alerts")
+				? ["src/CategoryAlerts/index.jsx"]
+				: await Array.fromAsync(glob("src/**/index.*")),
 	outdir: "Plugins",
 	entryNames: "[dir]/[dir].plugin",
 	outbase: "src",
