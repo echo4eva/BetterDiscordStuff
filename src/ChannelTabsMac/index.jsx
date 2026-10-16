@@ -78,6 +78,22 @@ function matchesClickShortcut(event, shortcut) {
 	);
 }
 
+function getNumberedTabIndex(event) {
+	if (
+		process.platform !== "darwin" ||
+		!event.metaKey ||
+		event.altKey ||
+		event.ctrlKey ||
+		event.shiftKey ||
+		event.isComposing
+	)
+		return -1;
+	const digit =
+		/^(?:Digit|Numpad)([1-9])$/.exec(event.code ?? "")?.[1] ??
+		/^[1-9]$/.exec(event.key ?? "")?.[0];
+	return digit ? Number(digit) - 1 : -1;
+}
+
 const { ContextMenu, Patcher, Webpack, React, DOM, ReactUtils, UI } = new BdApi(
 	"ChannelTabsMac",
 );
@@ -3308,6 +3324,7 @@ const TopBar = class TopBar extends React.Component {
 	//#region New Tab Functions
 
 	saveChannel(guildId, channelId, name) {
+		const url = `/channels/${guildId || "@me"}${channelId ? `/${channelId}` : ""}`;
 		if (this.state.alwaysFocusNewTabs) {
 			//Open and Focus New Tab
 			const newTabIndex = this.state.tabs.length;
@@ -3318,7 +3335,7 @@ const TopBar = class TopBar extends React.Component {
 							Object.assign(tab, { selected: false }),
 						),
 						{
-							url: `/channels/${guildId || "@me"}/${channelId}`,
+							url,
 							name,
 							channelId,
 							minimized: false,
@@ -3339,7 +3356,7 @@ const TopBar = class TopBar extends React.Component {
 					tabs: [
 						...this.state.tabs,
 						{
-							url: `/channels/${guildId || "@me"}/${channelId}`,
+							url,
 							name,
 							channelId,
 							minimized: false,
@@ -3565,6 +3582,7 @@ module.exports = class ChannelTabs {
 		};
 		this.saveSettings = this.saveSettings.bind(this);
 		this.keybindHandler = this.keybindHandler.bind(this);
+		this.numberedTabKeybindHandler = this.numberedTabKeybindHandler.bind(this);
 		this.commandClickHandler = this.commandClickHandler.bind(this);
 		this.onSwitch();
 		this.patchTitleBar(this.promises.state);
@@ -3578,6 +3596,7 @@ module.exports = class ChannelTabs {
 			},
 		};
 		globalThis.__ChannelTabsMacTabAPI = this.tabApi;
+		window.addEventListener("keydown", this.numberedTabKeybindHandler, true);
 		document.addEventListener("keydown", this.keybindHandler);
 		document.addEventListener("click", this.commandClickHandler, true);
 		window.onclick = (event) => this.clickHandler(event);
@@ -3588,6 +3607,7 @@ module.exports = class ChannelTabs {
 		if (globalThis.__ChannelTabsMacTabAPI === this.tabApi)
 			delete globalThis.__ChannelTabsMacTabAPI;
 		this.removeStyle();
+		window.removeEventListener("keydown", this.numberedTabKeybindHandler, true);
 		document.removeEventListener("keydown", this.keybindHandler);
 		document.removeEventListener("click", this.commandClickHandler, true);
 		window.onclick = null;
@@ -4568,6 +4588,18 @@ html:not(.platform-win) #channelTabs-settingsMenu {
 		if (!matchesClickShortcut(e, this.settings.sidebarTabShortcut ?? "meta"))
 			return;
 
+		const guildIcon = e.target.closest('[data-list-item-id^="guildsnav___"]');
+		const iconGuildId = guildIcon
+			?.getAttribute("data-list-item-id")
+			?.match(/^guildsnav___(\d+)$/)?.[1];
+		const guild = iconGuildId && GuildStore.getGuild(iconGuildId);
+		if (guild) {
+			e.preventDefault();
+			e.stopPropagation();
+			TopBarRef.current.saveChannel(guild.id, null, guild.name);
+			return;
+		}
+
 		const link = e.target.closest("a[href]");
 		if (
 			!link ||
@@ -4596,6 +4628,17 @@ html:not(.platform-win) #channelTabs-settingsMenu {
 					? `#${channel.name}`
 					: getCurrentName(url.pathname);
 		TopBarRef.current.saveChannel(guildId, channelId, name);
+	}
+
+	numberedTabKeybindHandler(e) {
+		if (!this.settings.showTabBar || !TopBarRef.current) return;
+		if (this.settings.commandNumberTabs === false) return;
+		const index = getNumberedTabIndex(e);
+		if (index < 0) return;
+		e.preventDefault();
+		e.stopImmediatePropagation();
+		if (!e.repeat && index < TopBarRef.current.state.tabs.length)
+			TopBarRef.current.switchToTab(index);
 	}
 
 	keybindHandler(e) {
@@ -4765,6 +4808,7 @@ html:not(.platform-win) #channelTabs-settingsMenu {
 			showNavButtons: true,
 			closeTabShortcut: [...DEFAULT_CLOSE_TAB_SHORTCUT],
 			sidebarTabShortcut: "meta",
+			commandNumberTabs: true,
 			alwaysFocusNewTabs: false,
 			useStandardNav: true,
 		};
@@ -5008,6 +5052,17 @@ html:not(.platform-win) #channelTabs-settingsMenu {
 					name: "Behavior",
 					settings: [
 						{
+							id: "commandNumberTabs",
+							type: "switch",
+							name: "Command + number switches tabs",
+							note: "Command + 1 through Command + 9 selects the matching tab instead of a server. Shortcuts beyond your open tabs do nothing.",
+							value: this.settings.commandNumberTabs !== false,
+							onChange: (checked) => {
+								this.settings.commandNumberTabs = checked;
+								this.saveSettings();
+							},
+						},
+						{
 							id: "closeTabShortcut",
 							type: "keybind",
 							name: "Close current tab",
@@ -5024,7 +5079,7 @@ html:not(.platform-win) #channelTabs-settingsMenu {
 							id: "sidebarTabShortcut",
 							type: "dropdown",
 							name: "Open sidebar item or bookmark in new tab",
-							note: "Choose a modifier to hold while clicking a channel, thread, direct message, or bookmark. The new tab follows your auto-focus setting.",
+							note: "Choose a modifier to hold while clicking a server icon, channel, thread, direct message, or bookmark. The new tab follows your auto-focus setting.",
 							value: this.settings.sidebarTabShortcut ?? "meta",
 							options: [
 								{ label: "Command-click", value: "meta" },

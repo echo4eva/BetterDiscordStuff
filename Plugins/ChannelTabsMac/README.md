@@ -2,7 +2,9 @@
 
 ChannelTabsMac is a macOS layout variant of [ChannelTabs](../ChannelTabs/README.md) 2.8.9. The three navigation buttons sit together immediately to the right of the native red, yellow, and green window controls. The first tab follows the buttons. The layout change applies only on macOS.
 
-On macOS, **Command-click** a channel, thread, direct message, or ChannelTabsMac bookmark to open it in a ChannelTabs tab. This also works for bookmarks inside folders. Your current view stays open unless you have enabled **Always focus new tabs**. In **ChannelTabsMac → Settings → Behavior**, choose a different click shortcut (Command-Shift, Option, Option-Shift, or Shift) or turn it off. The existing **ChannelTabs → Open in new tab** right-click menu remains available.
+On macOS, **Command-click** a server icon, channel, thread, direct message, or ChannelTabsMac bookmark to open it in a ChannelTabs tab. This also works for bookmarks inside folders. A server icon opens the server, with Discord choosing which channel to show. Your current view stays open unless you have enabled **Always focus new tabs**. In **ChannelTabsMac → Settings → Behavior**, choose a different click shortcut (Command-Shift, Option, Option-Shift, or Shift) or turn it off. The existing **ChannelTabs → Open in new tab** right-click menu remains available.
+
+**Command-1** through **Command-9** switch to the corresponding tabs from left to right. When that numbered tab does not exist, the shortcut does nothing. Toggle **Command + number switches tabs** in Behavior settings to restore Discord's server shortcuts.
 
 Press **Option-W** to close the current tab. If it is the last tab, the same shortcut closes the Discord window while keeping that tab saved for the next launch. In **ChannelTabsMac → Settings → Behavior → Close current tab**, record a different keybind or clear it to disable the shortcut. The quick settings menu shows the currently assigned keybind.
 

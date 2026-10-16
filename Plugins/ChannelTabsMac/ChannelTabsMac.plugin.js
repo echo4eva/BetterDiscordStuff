@@ -2,7 +2,7 @@
  * @name ChannelTabsMac
  * @author samfundev, l0c4lh057, CarJem Generations
  * @description ChannelTabs with navigation beside the macOS window controls.
- * @version 2.8.9-mac.7
+ * @version 2.8.9-mac.8
  * @authorId 76052829285916672
  * @donate https://github.com/sponsors/samfundev
  * @source https://github.com/echo4eva/BetterDiscordStuff/blob/master/src/ChannelTabsMac/index.jsx
@@ -31,6 +31,9 @@
 
 @else@*/
 const CHANGES = {
+	"2.8.9-mac.8": {
+		added: ["Navigate tabs by number and open servers in tabs"],
+	},
 	"2.8.9-mac.7": {
 		added: ["Close Discord window from last tab shortcut"],
 		fixed: [
@@ -131,6 +134,21 @@ function matchesClickShortcut(event, shortcut) {
 			.filter(Boolean)
 			.join("+") === shortcut
 	);
+}
+function getNumberedTabIndex(event) {
+	if (
+		process.platform !== "darwin" ||
+		!event.metaKey ||
+		event.altKey ||
+		event.ctrlKey ||
+		event.shiftKey ||
+		event.isComposing
+	)
+		return -1;
+	const digit =
+		/^(?:Digit|Numpad)([1-9])$/.exec(event.code ?? "")?.[1] ??
+		/^[1-9]$/.exec(event.key ?? "")?.[0];
+	return digit ? Number(digit) - 1 : -1;
 }
 var { ContextMenu, Patcher, Webpack, React, DOM, ReactUtils, UI } = new BdApi(
 	"ChannelTabsMac",
@@ -3310,6 +3328,7 @@ var TopBar = class TopBar2 extends React.Component {
 	//#endregion
 	//#region New Tab Functions
 	saveChannel(guildId, channelId, name) {
+		const url = `/channels/${guildId || "@me"}${channelId ? `/${channelId}` : ""}`;
 		if (this.state.alwaysFocusNewTabs) {
 			const newTabIndex = this.state.tabs.length;
 			this.setState(
@@ -3319,7 +3338,7 @@ var TopBar = class TopBar2 extends React.Component {
 							Object.assign(tab, { selected: false }),
 						),
 						{
-							url: `/channels/${guildId || "@me"}/${channelId}`,
+							url,
 							name,
 							channelId,
 							minimized: false,
@@ -3339,7 +3358,7 @@ var TopBar = class TopBar2 extends React.Component {
 					tabs: [
 						...this.state.tabs,
 						{
-							url: `/channels/${guildId || "@me"}/${channelId}`,
+							url,
 							name,
 							channelId,
 							minimized: false,
@@ -3542,6 +3561,7 @@ module.exports = class ChannelTabs {
 		};
 		this.saveSettings = this.saveSettings.bind(this);
 		this.keybindHandler = this.keybindHandler.bind(this);
+		this.numberedTabKeybindHandler = this.numberedTabKeybindHandler.bind(this);
 		this.commandClickHandler = this.commandClickHandler.bind(this);
 		this.onSwitch();
 		this.patchTitleBar(this.promises.state);
@@ -3555,6 +3575,7 @@ module.exports = class ChannelTabs {
 			},
 		};
 		globalThis.__ChannelTabsMacTabAPI = this.tabApi;
+		window.addEventListener("keydown", this.numberedTabKeybindHandler, true);
 		document.addEventListener("keydown", this.keybindHandler);
 		document.addEventListener("click", this.commandClickHandler, true);
 		window.onclick = (event) => this.clickHandler(event);
@@ -3564,6 +3585,7 @@ module.exports = class ChannelTabs {
 		if (globalThis.__ChannelTabsMacTabAPI === this.tabApi)
 			delete globalThis.__ChannelTabsMacTabAPI;
 		this.removeStyle();
+		window.removeEventListener("keydown", this.numberedTabKeybindHandler, true);
 		document.removeEventListener("keydown", this.keybindHandler);
 		document.removeEventListener("click", this.commandClickHandler, true);
 		window.onclick = null;
@@ -4503,6 +4525,17 @@ html:not(.platform-win) #channelTabs-settingsMenu {
 			return;
 		if (!matchesClickShortcut(e, this.settings.sidebarTabShortcut ?? "meta"))
 			return;
+		const guildIcon = e.target.closest('[data-list-item-id^="guildsnav___"]');
+		const iconGuildId = guildIcon
+			?.getAttribute("data-list-item-id")
+			?.match(/^guildsnav___(\d+)$/)?.[1];
+		const guild = iconGuildId && GuildStore.getGuild(iconGuildId);
+		if (guild) {
+			e.preventDefault();
+			e.stopPropagation();
+			TopBarRef.current.saveChannel(guild.id, null, guild.name);
+			return;
+		}
 		const link = e.target.closest("a[href]");
 		if (
 			!link ||
@@ -4528,6 +4561,16 @@ html:not(.platform-win) #channelTabs-settingsMenu {
 					? `#${channel.name}`
 					: getCurrentName(url.pathname);
 		TopBarRef.current.saveChannel(guildId, channelId, name);
+	}
+	numberedTabKeybindHandler(e) {
+		if (!this.settings.showTabBar || !TopBarRef.current) return;
+		if (this.settings.commandNumberTabs === false) return;
+		const index = getNumberedTabIndex(e);
+		if (index < 0) return;
+		e.preventDefault();
+		e.stopImmediatePropagation();
+		if (!e.repeat && index < TopBarRef.current.state.tabs.length)
+			TopBarRef.current.switchToTab(index);
 	}
 	keybindHandler(e) {
 		if (
@@ -4682,6 +4725,7 @@ html:not(.platform-win) #channelTabs-settingsMenu {
 			showNavButtons: true,
 			closeTabShortcut: [...DEFAULT_CLOSE_TAB_SHORTCUT],
 			sidebarTabShortcut: "meta",
+			commandNumberTabs: true,
 			alwaysFocusNewTabs: false,
 			useStandardNav: true,
 		};
@@ -4917,6 +4961,17 @@ html:not(.platform-win) #channelTabs-settingsMenu {
 					name: "Behavior",
 					settings: [
 						{
+							id: "commandNumberTabs",
+							type: "switch",
+							name: "Command + number switches tabs",
+							note: "Command + 1 through Command + 9 selects the matching tab instead of a server. Shortcuts beyond your open tabs do nothing.",
+							value: this.settings.commandNumberTabs !== false,
+							onChange: (checked) => {
+								this.settings.commandNumberTabs = checked;
+								this.saveSettings();
+							},
+						},
+						{
 							id: "closeTabShortcut",
 							type: "keybind",
 							name: "Close current tab",
@@ -4933,7 +4988,7 @@ html:not(.platform-win) #channelTabs-settingsMenu {
 							id: "sidebarTabShortcut",
 							type: "dropdown",
 							name: "Open sidebar item or bookmark in new tab",
-							note: "Choose a modifier to hold while clicking a channel, thread, direct message, or bookmark. The new tab follows your auto-focus setting.",
+							note: "Choose a modifier to hold while clicking a server icon, channel, thread, direct message, or bookmark. The new tab follows your auto-focus setting.",
 							value: this.settings.sidebarTabShortcut ?? "meta",
 							options: [
 								{ label: "Command-click", value: "meta" },
