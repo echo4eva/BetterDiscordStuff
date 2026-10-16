@@ -94,6 +94,46 @@ function getNumberedTabIndex(event) {
 	return digit ? Number(digit) - 1 : -1;
 }
 
+function getTabDisplayItems(tabs, folders) {
+	const items = [];
+	const shownFolders = new Set();
+	const validFolders = new Map(folders.map((folder) => [folder.id, folder]));
+	tabs.forEach((tab, tabIndex) => {
+		const folder = validFolders.get(tab.folderId);
+		if (!folder) {
+			items.push({ type: "tab", tab, tabIndex });
+			return;
+		}
+		if (shownFolders.has(folder.id)) return;
+		shownFolders.add(folder.id);
+		const folderTabs = tabs
+			.map((item, index) => ({ tab: item, tabIndex: index }))
+			.filter((item) => item.tab.folderId === folder.id);
+		items.push({ type: "folder", folder, tabs: folderTabs });
+		if (!folder.collapsed)
+			items.push(...folderTabs.map((item) => ({ type: "tab", ...item })));
+	});
+	for (const folder of folders) {
+		if (!shownFolders.has(folder.id))
+			items.push({ type: "folder", folder, tabs: [] });
+	}
+	return items;
+}
+
+function moveTabIntoFolder(tabs, tabIndex, folderId) {
+	const tab = tabs[tabIndex];
+	if (!tab) return tabs;
+	const remaining = tabs.filter((_, index) => index !== tabIndex);
+	const lastIndex = remaining.findLastIndex(
+		(item) => (item.folderId ?? null) === folderId,
+	);
+	remaining.splice(lastIndex < 0 ? remaining.length : lastIndex + 1, 0, {
+		...tab,
+		folderId,
+	});
+	return remaining;
+}
+
 const { ContextMenu, Patcher, Webpack, React, DOM, ReactUtils, UI } = new BdApi(
 	"ChannelTabsMac",
 );
@@ -627,6 +667,27 @@ function CreateTabContextMenu(props, e) {
 									props.addToFavs(props.name, props.url, props.channelId),
 							},
 							{
+								type: "submenu",
+								label: "Move to folder",
+								items: [
+									{
+										label: "No folder",
+										disabled: !props.folderId,
+										action: () => props.moveToFolder(null),
+									},
+									...props.tabFolders.map((folder) => ({
+										label: folder.name,
+										disabled: props.folderId === folder.id,
+										action: () => props.moveToFolder(folder.id),
+									})),
+									{ type: "separator" },
+									{
+										label: "New folder…",
+										action: props.createFolderForTab,
+									},
+								],
+							},
+							{
 								label: "Minimize tab",
 								type: "toggle",
 								checked: () => props.minimized,
@@ -708,6 +769,34 @@ function CreateTabContextMenu(props, e) {
 			position: "right",
 			align: "top",
 		},
+	);
+}
+
+function CreateTabFolderContextMenu(props, e) {
+	ContextMenu.open(
+		e,
+		ContextMenu.buildMenu([
+			{
+				type: "group",
+				items: [
+					{
+						label: props.folder.collapsed ? "Expand folder" : "Collapse folder",
+						action: () => props.toggleFolder(props.folder.id),
+					},
+					{
+						label: "Rename folder",
+						action: () => props.renameFolder(props.folder.id),
+					},
+					{ type: "separator" },
+					{
+						label: "Delete folder (keep tabs)",
+						color: "danger",
+						action: () => props.deleteFolder(props.folder.id),
+					},
+				],
+			},
+		]),
+		{ position: "right", align: "top" },
 	);
 }
 
@@ -929,26 +1018,33 @@ function CreateTabListContextMenu(props, e) {
 		};
 	}
 
-	const menuItems = props.tabs.map((tab, tabIndex) => ({
-		id: `tab-${tabIndex}`,
-		render: () => (
-			<Tab
-				{...tab}
-				{...{
-					unreadCount: UnreadStateStore.getUnreadCount(tab.channelId),
-					unreadEstimated: UnreadStateStore.isEstimated(tab.channelId),
-					hasUnread: UnreadStateStore.hasUnread(tab.channelId),
-					mentionCount: UnreadStateStore.getMentionCount(tab.channelId),
-					hasUsersTyping: isChannelTyping(tab.channelId),
-					currentStatus: getCurrentUserStatus(tab.url),
-				}}
-				{...props}
-				switchToTab={wrapClose("switchToTab")}
-				closeTab={wrapClose("closeTab")}
-				tabIndex={tabIndex}
-			/>
-		),
-	}));
+	const menuItems = props.tabs.map((tab, tabIndex) => {
+		const folder = props.tabFolders.find((item) => item.id === tab.folderId);
+		return {
+			id: `tab-${tabIndex}`,
+			render: () => (
+				<Tab
+					{...tab}
+					name={folder ? `${folder.name} / ${tab.name}` : tab.name}
+					{...{
+						unreadCount: UnreadStateStore.getUnreadCount(tab.channelId),
+						unreadEstimated: UnreadStateStore.isEstimated(tab.channelId),
+						hasUnread: UnreadStateStore.hasUnread(tab.channelId),
+						mentionCount: UnreadStateStore.getMentionCount(tab.channelId),
+						hasUsersTyping: isChannelTyping(tab.channelId),
+						currentStatus: getCurrentUserStatus(tab.url),
+					}}
+					{...props}
+					switchToTab={wrapClose("switchToTab")}
+					closeTab={wrapClose("closeTab")}
+					moveToFolder={(folderId) => props.moveTabToFolder(tabIndex, folderId)}
+					createFolderForTab={() => props.createFolder(tabIndex)}
+					tabCount={props.tabs.length}
+					tabIndex={tabIndex}
+				/>
+			),
+		};
+	});
 
 	ContextMenu.open(e, ContextMenu.buildMenu(menuItems), {
 		position: "bottom",
@@ -2230,6 +2326,50 @@ const Tab = (props) => (
 	</div>
 );
 
+const TabFolder = (props) => {
+	const selectedTab = props.tabs.find(({ tab }) => tab.selected)?.tab;
+	const suppressClickUntil = React.useRef(0);
+	return (
+		<div
+			className={
+				"channelTabs-tabFolder" +
+				(selectedTab ? " channelTabs-tabFolderSelected" : "")
+			}
+			role="button"
+			tabIndex={0}
+			aria-label={`${props.folder.name}, ${props.tabs.length} tabs, ${props.folder.collapsed ? "collapsed" : "expanded"}`}
+			title={
+				selectedTab ? `Current tab: ${selectedTab.name}` : props.folder.name
+			}
+			onClick={() => {
+				if (Date.now() < suppressClickUntil.current) return;
+				props.toggleFolder(props.folder.id);
+			}}
+			onKeyDown={(e) => {
+				if (e.key === "Enter" || e.key === " ") {
+					e.preventDefault();
+					props.toggleFolder(props.folder.id);
+				}
+			}}
+			onContextMenu={(e) => CreateTabFolderContextMenu(props, e)}
+			onMouseOver={() => {
+				if (currentTabDragIndex !== -1) currentTabDragDestinationIndex = -1;
+			}}
+			onMouseUpCapture={(e) => {
+				if (e.button !== 0 || currentTabDragIndex === -1) return;
+				e.preventDefault();
+				suppressClickUntil.current = Date.now() + 100;
+				props.moveTabToFolder(currentTabDragIndex, props.folder.id);
+				currentTabDragDestinationIndex = -1;
+			}}
+		>
+			<span aria-hidden="true">{props.folder.collapsed ? "▸" : "▾"}</span>
+			<span className="channelTabs-tabFolderName">{props.folder.name}</span>
+			<span className="channelTabs-tabFolderCount">{props.tabs.length}</span>
+		</div>
+	);
+};
+
 //#endregion
 
 //#region Fav Definitions
@@ -2477,6 +2617,30 @@ const Fav = (props) => (
 const NewTab = (props) => (
 	<div className="channelTabs-newTab" onClick={props.openNewTab}>
 		<PlusAlt />
+	</div>
+);
+
+const NewTabFolder = (props) => (
+	<div
+		className="channelTabs-newTabFolder"
+		role="button"
+		tabIndex={0}
+		title="New tab folder"
+		aria-label="New tab folder"
+		onClick={props.createFolder}
+		onKeyDown={(e) => {
+			if (e.key === "Enter" || e.key === " ") {
+				e.preventDefault();
+				props.createFolder();
+			}
+		}}
+	>
+		<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+			<path
+				fill="currentColor"
+				d="M10 4 12 6h8a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h6Zm1 7v2H8v2h3v3h2v-3h3v-2h-3v-2h-2Z"
+			/>
+		</svg>
 	</div>
 );
 
@@ -2855,65 +3019,94 @@ const TabBar = (props) => (
 				flexWrap: props.wrapTabs ? "wrap" : "nowrap",
 			}}
 		>
-			{props.tabs.map((tab, tabIndex) =>
-				React.createElement(
-					Flux.connectStores(
-						[UnreadStateStore, UserTypingStore, UserStatusStore],
-						() => ({
-							unreadCount: UnreadStateStore.getUnreadCount(tab.channelId),
-							unreadEstimated: UnreadStateStore.isEstimated(tab.channelId),
-							hasUnread: UnreadStateStore.hasUnread(tab.channelId),
-							mentionCount: UnreadStateStore.getMentionCount(tab.channelId),
-							hasUsersTyping: isChannelTyping(tab.channelId),
-							currentStatus: getCurrentUserStatus(tab.url),
-						}),
-					)((result) => (
-						<Tab
-							ref={(el) => (props.tabRefs.current[tabIndex] = el)}
-							key={tabIndex}
-							switchToTab={props.switchToTab}
-							closeTab={props.closeTab}
-							addToFavs={props.addToFavs}
-							minimizeTab={props.minimizeTab}
-							moveLeft={() =>
-								props.move(
-									tabIndex,
-									(tabIndex + props.tabs.length - 1) % props.tabs.length,
-								)
-							}
-							moveRight={() =>
-								props.move(tabIndex, (tabIndex + 1) % props.tabs.length)
-							}
-							openInNewTab={() => props.openInNewTab(tab)}
-							moveTab={props.move}
-							tabCount={props.tabs.length}
-							tabIndex={tabIndex}
-							name={tab.name}
-							currentStatus={result.currentStatus}
-							url={tab.url}
-							selected={tab.selected}
-							minimized={tab.minimized}
-							channelId={tab.channelId}
-							unreadCount={result.unreadCount}
-							unreadEstimated={result.unreadEstimated}
-							hasUnread={result.hasUnread}
-							mentionCount={result.mentionCount}
-							hasUsersTyping={result.hasUsersTyping}
-							showTabUnreadBadges={props.showTabUnreadBadges}
-							showTabMentionBadges={props.showTabMentionBadges}
-							showTabTypingBadge={props.showTabTypingBadge}
-							showEmptyTabBadges={props.showEmptyTabBadges}
-							showActiveTabUnreadBadges={props.showActiveTabUnreadBadges}
-							showActiveTabMentionBadges={props.showActiveTabMentionBadges}
-							showActiveTabTypingBadge={props.showActiveTabTypingBadge}
-							showEmptyActiveTabBadges={props.showEmptyActiveTabBadges}
-							compactStyle={props.compactStyle}
-						/>
-					)),
+			{getTabDisplayItems(props.tabs, props.tabFolders).map((item) =>
+				item.type === "folder" ? (
+					<TabFolder
+						key={`folder-${item.folder.id}`}
+						folder={item.folder}
+						tabs={item.tabs}
+						toggleFolder={props.toggleFolder}
+						renameFolder={props.renameFolder}
+						deleteFolder={props.deleteFolder}
+						moveTabToFolder={props.moveTabToFolder}
+					/>
+				) : (
+					React.createElement(
+						Flux.connectStores(
+							[UnreadStateStore, UserTypingStore, UserStatusStore],
+							() => ({
+								unreadCount: UnreadStateStore.getUnreadCount(
+									item.tab.channelId,
+								),
+								unreadEstimated: UnreadStateStore.isEstimated(
+									item.tab.channelId,
+								),
+								hasUnread: UnreadStateStore.hasUnread(item.tab.channelId),
+								mentionCount: UnreadStateStore.getMentionCount(
+									item.tab.channelId,
+								),
+								hasUsersTyping: isChannelTyping(item.tab.channelId),
+								currentStatus: getCurrentUserStatus(item.tab.url),
+							}),
+						)((result) => (
+							<Tab
+								ref={(el) => (props.tabRefs.current[item.tabIndex] = el)}
+								key={item.tabIndex}
+								switchToTab={props.switchToTab}
+								closeTab={props.closeTab}
+								addToFavs={props.addToFavs}
+								minimizeTab={props.minimizeTab}
+								moveLeft={() =>
+									props.move(
+										item.tabIndex,
+										(item.tabIndex + props.tabs.length - 1) % props.tabs.length,
+									)
+								}
+								moveRight={() =>
+									props.move(
+										item.tabIndex,
+										(item.tabIndex + 1) % props.tabs.length,
+									)
+								}
+								openInNewTab={() => props.openInNewTab(item.tab)}
+								moveTab={props.move}
+								moveToFolder={(folderId) =>
+									props.moveTabToFolder(item.tabIndex, folderId)
+								}
+								createFolderForTab={() => props.createFolder(item.tabIndex)}
+								tabFolders={props.tabFolders}
+								folderId={item.tab.folderId}
+								tabCount={props.tabs.length}
+								tabIndex={item.tabIndex}
+								name={item.tab.name}
+								currentStatus={result.currentStatus}
+								url={item.tab.url}
+								selected={item.tab.selected}
+								minimized={item.tab.minimized}
+								channelId={item.tab.channelId}
+								unreadCount={result.unreadCount}
+								unreadEstimated={result.unreadEstimated}
+								hasUnread={result.hasUnread}
+								mentionCount={result.mentionCount}
+								hasUsersTyping={result.hasUsersTyping}
+								showTabUnreadBadges={props.showTabUnreadBadges}
+								showTabMentionBadges={props.showTabMentionBadges}
+								showTabTypingBadge={props.showTabTypingBadge}
+								showEmptyTabBadges={props.showEmptyTabBadges}
+								showActiveTabUnreadBadges={props.showActiveTabUnreadBadges}
+								showActiveTabMentionBadges={props.showActiveTabMentionBadges}
+								showActiveTabTypingBadge={props.showActiveTabTypingBadge}
+								showEmptyActiveTabBadges={props.showEmptyActiveTabBadges}
+								compactStyle={props.compactStyle}
+							/>
+						)),
+						{ key: `tab-${item.tabIndex}` },
+					)
 				),
 			)}
 		</HorizontalScroll>
 		<NewTab openNewTab={props.openNewTab} />
+		<NewTabFolder createFolder={() => props.createFolder()} />
 		<TabListDropdown {...props} />
 		{props.trailing}
 	</div>
@@ -2954,6 +3147,7 @@ const TopBar = class TopBar extends React.Component {
 				0,
 			),
 			tabs: props.tabs,
+			tabFolders: props.tabFolders,
 			favs: props.favs,
 			favGroups: props.favGroups,
 			reopenLastChannel: props.reopenLastChannel,
@@ -2992,6 +3186,11 @@ const TopBar = class TopBar extends React.Component {
 		this.minimizeTab = this.minimizeTab.bind(this);
 		this.minimizeFav = this.minimizeFav.bind(this);
 		this.moveTab = this.moveTab.bind(this);
+		this.moveTabToFolder = this.moveTabToFolder.bind(this);
+		this.createTabFolder = this.createTabFolder.bind(this);
+		this.renameTabFolder = this.renameTabFolder.bind(this);
+		this.toggleTabFolder = this.toggleTabFolder.bind(this);
+		this.deleteTabFolder = this.deleteTabFolder.bind(this);
 		this.moveFav = this.moveFav.bind(this);
 		this.addFavGroup = this.addFavGroup.bind(this);
 		this.moveToFavGroup = this.moveToFavGroup.bind(this);
@@ -3028,6 +3227,7 @@ const TopBar = class TopBar extends React.Component {
 	}
 
 	switchToTab(tabIndex) {
+		const folderId = this.state.tabs[tabIndex]?.folderId;
 		this.setState(
 			{
 				tabs: this.state.tabs.map((tab, index) => {
@@ -3038,10 +3238,17 @@ const TopBar = class TopBar extends React.Component {
 					}
 				}),
 				selectedTabIndex: tabIndex,
+				tabFolders: folderId
+					? this.state.tabFolders.map((folder) =>
+							folder.id === folderId ? { ...folder, collapsed: false } : folder,
+						)
+					: this.state.tabFolders,
 			},
-			this.props.plugin.saveSettings,
+			() => {
+				this.props.plugin.saveSettings();
+				this.tabRefs.current[tabIndex]?.scrollIntoView({ behavior: "smooth" });
+			},
 		);
-		this.tabRefs.current[tabIndex]?.scrollIntoView({ behavior: "smooth" });
 		switching = true;
 		NavigationUtils.transitionTo(this.state.tabs[tabIndex].url);
 		switching = false;
@@ -3110,13 +3317,115 @@ const TopBar = class TopBar extends React.Component {
 
 	moveTab(fromIndex, toIndex) {
 		if (fromIndex === toIndex) return;
+		const targetFolderId = this.state.tabs[toIndex]?.folderId ?? null;
 		const tabs = this.state.tabs.filter((tab, index) => index !== fromIndex);
-		tabs.splice(toIndex, 0, this.state.tabs[fromIndex]);
+		tabs.splice(toIndex, 0, {
+			...this.state.tabs[fromIndex],
+			folderId: targetFolderId,
+		});
 		this.setState(
 			{
 				tabs,
 				selectedTabIndex: tabs.findIndex((tab) => tab.selected),
 			},
+			this.props.plugin.saveSettings,
+		);
+	}
+
+	moveTabToFolder(tabIndex, folderId) {
+		if (
+			folderId &&
+			!this.state.tabFolders.some((folder) => folder.id === folderId)
+		)
+			return;
+		const tab = this.state.tabs[tabIndex];
+		if (!tab || (tab.folderId ?? null) === folderId) return;
+		const tabs = moveTabIntoFolder(this.state.tabs, tabIndex, folderId);
+		this.setState(
+			{
+				tabs,
+				selectedTabIndex: tabs.findIndex((item) => item.selected),
+				tabFolders: this.state.tabFolders.map((folder) =>
+					folder.id === folderId ? { ...folder, collapsed: false } : folder,
+				),
+			},
+			this.props.plugin.saveSettings,
+		);
+	}
+
+	createTabFolder(tabIndex) {
+		let name = "New folder";
+		BdApi.UI.showConfirmationModal(
+			"Name this tab folder",
+			<Textbox
+				placeholder="New folder"
+				onChange={(value) => (name = value.trim())}
+			/>,
+			{
+				onConfirm: () => {
+					if (!name) return;
+					const id = `tab-folder-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+					this.setState(
+						(state) => ({
+							tabFolders: [...state.tabFolders, { id, name, collapsed: false }],
+							tabs: state.tabs.map((tab, index) =>
+								index === tabIndex ? { ...tab, folderId: id } : tab,
+							),
+						}),
+						this.props.plugin.saveSettings,
+					);
+				},
+			},
+		);
+	}
+
+	renameTabFolder(folderId) {
+		const folder = this.state.tabFolders.find((item) => item.id === folderId);
+		if (!folder) return;
+		let name = folder.name;
+		BdApi.UI.showConfirmationModal(
+			"Rename tab folder",
+			<Textbox
+				placeholder={folder.name}
+				onChange={(value) => (name = value.trim())}
+			/>,
+			{
+				onConfirm: () => {
+					if (!name) return;
+					this.setState(
+						(state) => ({
+							tabFolders: state.tabFolders.map((item) =>
+								item.id === folderId ? { ...item, name } : item,
+							),
+						}),
+						this.props.plugin.saveSettings,
+					);
+				},
+			},
+		);
+	}
+
+	toggleTabFolder(folderId) {
+		this.setState(
+			(state) => ({
+				tabFolders: state.tabFolders.map((folder) =>
+					folder.id === folderId
+						? { ...folder, collapsed: !folder.collapsed }
+						: folder,
+				),
+			}),
+			this.props.plugin.saveSettings,
+		);
+	}
+
+	deleteTabFolder(folderId) {
+		this.setState(
+			(state) => ({
+				tabFolders: state.tabFolders.filter((folder) => folder.id !== folderId),
+				tabs: state.tabs.map((tab) =>
+					tab.folderId === folderId ? { ...tab, folderId: null } : tab,
+				),
+			}),
 			this.props.plugin.saveSettings,
 		);
 	}
@@ -3340,6 +3649,7 @@ const TopBar = class TopBar extends React.Component {
 							channelId,
 							minimized: false,
 							groupId: -1,
+							folderId: null,
 						},
 					],
 					selectedTabIndex: newTabIndex,
@@ -3361,6 +3671,7 @@ const TopBar = class TopBar extends React.Component {
 							channelId,
 							minimized: false,
 							groupId: -1,
+							folderId: null,
 						},
 					],
 				},
@@ -3382,6 +3693,7 @@ const TopBar = class TopBar extends React.Component {
 						name: "Friends",
 						selected: true,
 						channelId: undefined,
+						folderId: null,
 					},
 				],
 				selectedTabIndex: newTabIndex,
@@ -3397,7 +3709,7 @@ const TopBar = class TopBar extends React.Component {
 		//Used to Duplicate Tabs
 		this.setState(
 			{
-				tabs: [...this.state.tabs, Object.assign({}, tab, { selected: false })],
+				tabs: [...this.state.tabs, { ...tab, selected: false, folderId: null }],
 			},
 			this.props.plugin.saveSettings,
 		);
@@ -3420,6 +3732,7 @@ const TopBar = class TopBar extends React.Component {
 							currentStatus: getCurrentUserStatus(url),
 							channelId:
 								fav.channelId || SelectedChannelStore.getChannelId(fav.guildId),
+							folderId: null,
 						};
 					}),
 				],
@@ -3465,6 +3778,7 @@ const TopBar = class TopBar extends React.Component {
 						leading={this.props.leading}
 						trailing={trailing}
 						tabs={this.state.tabs}
+						tabFolders={this.state.tabFolders}
 						showTabUnreadBadges={this.state.showTabUnreadBadges}
 						showTabMentionBadges={this.state.showTabMentionBadges}
 						showTabTypingBadge={this.state.showTabTypingBadge}
@@ -3485,6 +3799,11 @@ const TopBar = class TopBar extends React.Component {
 						addToFavs={this.addToFavs}
 						minimizeTab={this.minimizeTab}
 						move={this.moveTab}
+						moveTabToFolder={this.moveTabToFolder}
+						createFolder={this.createTabFolder}
+						renameFolder={this.renameTabFolder}
+						toggleFolder={this.toggleTabFolder}
+						deleteFolder={this.deleteTabFolder}
 						tabRefs={this.tabRefs}
 					/>
 				)}
@@ -3811,7 +4130,7 @@ module.exports = class ChannelTabs {
 		flex: 0 0 auto;
 	}
 
-	.channelTabs-tabContainer > div:not(.channelTabs-tabNav):not(.channelTabs-newTab):not(.channelTabs-tabListDropdown):not(.channelTabs-trailing) {
+	.channelTabs-tabContainer > div:not(.channelTabs-tabNav):not(.channelTabs-newTab):not(.channelTabs-newTabFolder):not(.channelTabs-tabListDropdown):not(.channelTabs-trailing) {
 		min-width: 0;
 		flex: 1 1 auto;
 	}
@@ -3891,6 +4210,46 @@ ${noDragClasses.map((x) => `.${x}`).join(", ")}, [role="menu"] {
 	min-width: var(--channelTabs-tabWidthMin);
 	flex: 1 1 var(--channelTabs-tabWidthMin);
 	margin-bottom: 3px;
+}
+
+.channelTabs-tabFolder {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	flex: 0 0 auto;
+	max-width: 180px;
+	height: var(--channelTabs-tabHeight);
+	padding: 0 9px;
+	margin: 0 3px 3px 3px;
+	border: 1px solid var(--border-normal);
+	border-radius: 5px;
+	background: var(--background-secondary);
+	color: var(--interactive-text-default);
+	cursor: pointer;
+	user-select: none;
+}
+
+.channelTabs-tabFolder:hover,
+.channelTabs-tabFolder:focus-visible {
+	background: var(--interactive-background-hover);
+	color: var(--interactive-text-hover);
+}
+
+.channelTabs-tabFolderSelected {
+	border-color: var(--brand-experiment);
+	color: var(--interactive-text-active);
+}
+
+.channelTabs-tabFolderName {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.channelTabs-tabFolderCount {
+	font-size: 11px;
+	color: var(--text-muted);
 }
 
 .channelTabs-tab>div:first-child {
@@ -4043,7 +4402,8 @@ html:not(.platform-win) #channelTabs-settingsMenu {
 	transform: scale(0.85);
 }
 
-.channelTabs-newTab {
+.channelTabs-newTab,
+.channelTabs-newTabFolder {
 	display:flex;
 	align-items: center;
 	justify-content: center;
@@ -4057,12 +4417,14 @@ html:not(.platform-win) #channelTabs-settingsMenu {
 	margin-right: 6px;
 }
 
-.channelTabs-newTab:hover {
+.channelTabs-newTab:hover,
+.channelTabs-newTabFolder:hover {
 	background: var(--interactive-background-hover);
 	color: var(--interactive-text-hover);
 }
 
-.channelTabs-newTab:active {
+.channelTabs-newTab:active,
+.channelTabs-newTabFolder:active {
 	background: var(--interactive-background-active);
 	color: var(--interactive-text-active);
 }
@@ -4482,6 +4844,7 @@ html:not(.platform-win) #channelTabs-settingsMenu {
 					alwaysFocusNewTabs={this.settings.alwaysFocusNewTabs}
 					useStandardNav={this.settings.useStandardNav}
 					tabs={this.settings.tabs}
+					tabFolders={this.settings.tabFolders ?? []}
 					favs={this.settings.favs}
 					favGroups={this.settings.favGroups}
 					ref={TopBarRef}
@@ -4637,8 +5000,12 @@ html:not(.platform-win) #channelTabs-settingsMenu {
 		if (index < 0) return;
 		e.preventDefault();
 		e.stopImmediatePropagation();
-		if (!e.repeat && index < TopBarRef.current.state.tabs.length)
-			TopBarRef.current.switchToTab(index);
+		const visibleTabs = getTabDisplayItems(
+			TopBarRef.current.state.tabs,
+			TopBarRef.current.state.tabFolders,
+		).filter((item) => item.type === "tab");
+		if (!e.repeat && visibleTabs[index])
+			TopBarRef.current.switchToTab(visibleTabs[index].tabIndex);
 	}
 
 	keybindHandler(e) {
@@ -4779,6 +5146,7 @@ html:not(.platform-win) #channelTabs-settingsMenu {
 	get defaultVariables() {
 		return {
 			tabs: [],
+			tabFolders: [],
 			favs: [],
 			favGroups: [],
 			showTabBar: true,
@@ -4835,6 +5203,7 @@ html:not(.platform-win) #channelTabs-settingsMenu {
 			this.settings =
 				Data.load(this.getSettingsPath(), "settings") ?? this.defaultVariables;
 		}
+		if (!Array.isArray(this.settings.tabFolders)) this.settings.tabFolders = [];
 		this.settings.favs = this.settings.favs.map((fav) => {
 			if (fav.channelId === undefined) {
 				const match = fav.url.match(/^\/channels\/[^\/]+\/(\d+)$/);
@@ -4851,6 +5220,7 @@ html:not(.platform-win) #channelTabs-settingsMenu {
 	saveSettings() {
 		if (TopBarRef.current) {
 			this.settings.tabs = TopBarRef.current.state.tabs;
+			this.settings.tabFolders = TopBarRef.current.state.tabFolders;
 			this.settings.favs = TopBarRef.current.state.favs;
 			this.settings.favGroups = TopBarRef.current.state.favGroups;
 		}

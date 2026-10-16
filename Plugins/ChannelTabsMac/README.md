@@ -6,6 +6,12 @@ On macOS, **Command-click** a server icon, channel, thread, direct message, or C
 
 **Command-1** through **Command-9** switch to the corresponding tabs from left to right. When that numbered tab does not exist, the shortcut does nothing. Toggle **Command + number switches tabs** in Behavior settings to restore Discord's server shortcuts.
 
+## Tab folders
+
+Use the folder-plus button beside the new-tab button to create a named folder in the tab row. Right-click a tab and choose **Move to folder** to place it in an existing folder, create a folder for it, or move it back out. You can also drag a tab onto a folder label. Click a folder label to collapse or expand its tabs; right-click it to rename or delete the folder. Deleting a folder keeps its tabs open. New tabs, including duplicated tabs and tabs opened from bookmarks, start outside folders.
+
+Collapsed folders show their tab count and highlight when they contain the current tab. The all-tabs menu still lists every tab, including hidden ones, and switching to a tab in a collapsed folder expands it. Command-number shortcuts count visible tabs from left to right, skipping tabs hidden inside collapsed folders.
+
 Press **Option-W** to close the current tab. If it is the last tab, the same shortcut closes the Discord window while keeping that tab saved for the next launch. In **ChannelTabsMac → Settings → Behavior → Close current tab**, record a different keybind or clear it to disable the shortcut. The quick settings menu shows the currently assigned keybind.
 
 Discord may process its native **Command-W** window shortcut before ChannelTabsMac receives the key press, so assigning Command-W is not guaranteed to close a tab first. Option-W avoids that conflict.
