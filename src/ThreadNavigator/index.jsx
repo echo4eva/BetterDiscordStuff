@@ -1,5 +1,5 @@
 const api = new BdApi("ThreadNavigator");
-const { Webpack, DOM, Data, UI } = api;
+const { Webpack, DOM, UI } = api;
 
 const ChannelStore = Webpack.getStore("ChannelStore");
 const ActiveThreadsStore = Webpack.getStore("ActiveJoinedThreadsStore");
@@ -9,50 +9,28 @@ const transitionTo = Webpack.getByStrings("transitionTo - Transitioning to ", {
 });
 
 const css = `
-.tn-rail { display: flex; flex-direction: column; min-width: 0; }
-.tn-rail.tn-threads-active { width: 280px !important; min-width: 280px !important; }
-.tn-rail.tn-threads-active > aside[class*="membersWrap"] { display: none !important; }
-.tn-rail > aside[class*="membersWrap"] { flex: 1; min-height: 0; }
-.tn-root { display: flex; flex-direction: column; flex: 0 0 auto; min-height: 0; color: var(--text-default); background: var(--background-base-low); border-left: 1px solid var(--border-subtle); }
-.tn-rail.tn-threads-active .tn-root { flex: 1; }
-.tn-tabs { display: flex; align-items: center; gap: 2px; padding: 8px; border-bottom: 1px solid var(--border-subtle); flex-shrink: 0; }
-.tn-tab, .tn-expand, .tn-browser-close, .tn-tab-action { border: 0; border-radius: 6px; color: var(--text-muted); background: transparent; cursor: pointer; font: inherit; }
-.tn-tab { flex: 1; padding: 7px 4px; font-size: 12px; font-weight: 700; }
-.tn-tab[aria-selected="true"] { color: var(--text-default); background: var(--background-modifier-selected); }
-.tn-tab:hover, .tn-expand:hover, .tn-browser-close:hover, .tn-tab-action:hover { color: var(--text-default); background: var(--background-modifier-hover); }
-.tn-expand { width: 28px; height: 28px; font-size: 18px; line-height: 1; }
-.tn-sidebody { display: flex; flex-direction: column; min-height: 0; flex: 1; }
-.tn-root[data-mode="members"] .tn-sidebody { display: none; }
-.tn-search-wrap { padding: 10px 10px 6px; flex-shrink: 0; }
-.tn-search { width: 100%; box-sizing: border-box; border: 0; outline: 0; border-radius: 6px; padding: 8px 10px; color: var(--text-default); background: var(--background-base-lower); font: inherit; font-size: 13px; }
-.tn-list { overflow-y: auto; min-height: 0; flex: 1; padding: 4px 8px 12px; }
-.tn-item { display: flex; align-items: flex-start; gap: 4px; padding: 8px; margin: 2px 0; border-radius: 7px; color: var(--text-default); }
-.tn-item:hover { background: var(--background-modifier-hover); }
-.tn-item-link { display: block; min-width: 0; flex: 1; color: inherit; text-decoration: none; }
-.tn-item-main { min-width: 0; flex: 1; }
-.tn-item-name { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 600; }
-.tn-item-meta { display: block; margin-top: 4px; color: var(--text-muted); font-size: 11px; }
-.tn-item-unread .tn-item-name::before { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin: 0 6px 1px 0; background: var(--brand-500); }
-.tn-tab-action { flex-shrink: 0; width: 24px; height: 24px; font-size: 17px; line-height: 1; }
-.tn-empty { padding: 22px 12px; color: var(--text-muted); text-align: center; font-size: 13px; line-height: 1.4; }
-.tn-empty button, .tn-browser-action { margin-top: 12px; border: 0; border-radius: 6px; background: var(--button-secondary-background); color: var(--button-secondary-text); padding: 8px 10px; cursor: pointer; font: inherit; }
-.tn-header-button { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; margin: 0 2px; border: 0; border-radius: 7px; color: var(--interactive-normal); background: transparent; cursor: pointer; }
-.tn-header-button:hover, .tn-header-button[aria-pressed="true"] { color: var(--interactive-active); background: var(--background-modifier-hover); }
-.tn-header-button svg { width: 20px; height: 20px; }
 .tn-full-active > main[class*="chatContent"] { display: none !important; }
 .tn-browser { display: none; flex: 1; flex-direction: column; min-width: 0; min-height: 0; color: var(--text-default); background: var(--background-base-low); }
 .tn-full-active > .tn-browser { display: flex; }
 .tn-browser-bar { display: flex; align-items: center; gap: 10px; padding: 16px 20px 8px; flex-shrink: 0; }
 .tn-browser-title { min-width: 0; flex: 1; font-size: 20px; font-weight: 700; }
+.tn-browser-close, .tn-tab-action { border: 0; border-radius: 6px; color: var(--text-muted); background: transparent; cursor: pointer; font: inherit; }
 .tn-browser-close { width: 30px; height: 30px; font-size: 22px; line-height: 1; }
+.tn-browser-close:hover, .tn-tab-action:hover { color: var(--text-default); background: var(--background-modifier-hover); }
 .tn-browser-controls { display: flex; gap: 8px; padding: 4px 20px 12px; flex-shrink: 0; }
-.tn-browser-controls .tn-search { flex: 1; }
-.tn-filter { border: 0; border-radius: 6px; padding: 6px 10px; background: var(--background-base-lower); color: var(--text-default); font: inherit; }
-.tn-browser-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); align-content: start; gap: 8px; overflow-y: auto; padding: 4px 20px 24px; }
-.tn-browser-grid .tn-item { min-height: 74px; padding: 12px; border: 1px solid var(--border-subtle); background: var(--background-base-lower); }
-.tn-browser-grid .tn-item:hover { background: var(--background-modifier-hover); }
-.tn-browser-grid .tn-item-name { white-space: normal; overflow-wrap: anywhere; }
-.tn-load { grid-column: 1 / -1; padding: 12px; color: var(--text-muted); text-align: center; font-size: 12px; }
+.tn-search { min-width: 0; flex: 1; box-sizing: border-box; border: 0; outline: 0; border-radius: 6px; padding: 8px 10px; color: var(--text-default); background: var(--background-base-lower); font: inherit; font-size: 13px; }
+.tn-filter, .tn-discover { border: 0; border-radius: 6px; padding: 6px 10px; background: var(--background-base-lower); color: var(--text-default); font: inherit; cursor: pointer; }
+.tn-browser-list { display: flex; flex-direction: column; gap: 5px; overflow-y: auto; min-height: 0; padding: 4px 20px 24px; }
+.tn-item { display: flex; align-items: center; gap: 8px; max-width: 900px; width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid var(--border-subtle); border-radius: 7px; background: var(--background-base-lower); color: var(--text-default); }
+.tn-item:hover { background: var(--background-modifier-hover); }
+.tn-item-selected { border-color: var(--brand-500); background: var(--background-modifier-selected); }
+.tn-item-link { display: block; min-width: 0; flex: 1; color: inherit; text-decoration: none; }
+.tn-item-main { display: block; min-width: 0; }
+.tn-item-name { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 600; }
+.tn-item-meta { display: block; margin-top: 4px; color: var(--text-muted); font-size: 11px; }
+.tn-item-unread .tn-item-name::before { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin: 0 6px 1px 0; background: var(--brand-500); }
+.tn-tab-action { flex-shrink: 0; width: 28px; height: 28px; font-size: 17px; line-height: 1; }
+.tn-empty, .tn-load { padding: 18px 12px; color: var(--text-muted); text-align: center; font-size: 13px; }
 `;
 
 function node(tag, className, text) {
@@ -75,19 +53,14 @@ module.exports = class ThreadNavigator {
 		this.meta = meta;
 		this.sync = this.sync.bind(this);
 		this.scheduleSync = this.scheduleSync.bind(this);
+		this.onNativeThreadsClick = this.onNativeThreadsClick.bind(this);
+		this.onNativeThreadsKeyDown = this.onNativeThreadsKeyDown.bind(this);
 	}
 
 	start() {
-		this.settings = Object.assign(
-			{ startOnThreads: true },
-			Data.load("settings") ?? {},
-		);
-		this.mode = this.settings.startOnThreads ? "threads" : "members";
 		this.full = false;
-		this.sideQuery = "";
 		this.browserQuery = "";
 		this.browserFilter = "active";
-		this.sideLimit = 30;
 		this.browserLimit = 40;
 		this.observer = new MutationObserver(this.scheduleSync);
 		this.observer.observe(document.body, { childList: true, subtree: true });
@@ -117,33 +90,35 @@ module.exports = class ThreadNavigator {
 	}
 
 	currentChannel() {
-		const match = location.pathname.match(/^\/channels\/(\d+)\/(\d+)/);
+		const match = location.pathname.match(
+			/^\/channels\/(\d+)\/(\d+)(?:\/threads\/(\d+))?/,
+		);
 		if (!match) return null;
-		const [, guildId, selectedId] = match;
+		const [, guildId, selectedId, sideThreadId] = match;
 		const selected = ChannelStore?.getChannel?.(selectedId);
 		if (!selected) return null;
-		const parentId = [10, 11, 12].includes(selected.type)
-			? selected.parent_id
-			: selectedId;
+		const isThread = [10, 11, 12].includes(selected.type);
+		const parentId = isThread ? selected.parent_id : selectedId;
 		const parent = ChannelStore.getChannel(parentId);
 		if (!parent || ![0, 5].includes(parent.type)) return null;
-		return { guildId, parentId, name: parent.name || "Channel" };
+		return {
+			guildId,
+			parentId,
+			selectedThreadId: sideThreadId || (isThread ? selectedId : null),
+			name: parent.name || "Channel",
+		};
 	}
 
 	findLayout() {
-		for (const members of document.querySelectorAll(
-			'aside[class*="membersWrap"]',
+		for (const chat of document.querySelectorAll(
+			'main[class*="chatContent"]',
 		)) {
-			const rail = members.parentElement;
-			const content = rail?.parentElement;
-			const chat = content?.querySelector(
-				':scope > main[class*="chatContent"]',
-			);
-			if (!chat) continue;
+			const content = chat.parentElement;
 			const toolbar = content.parentElement?.querySelector(
 				':scope > [class*="subtitleContainer"] section [class*="toolbar"]',
 			);
-			return { members, rail, content, chat, toolbar };
+			if (!toolbar) continue;
+			return { content, chat, toolbar };
 		}
 		return null;
 	}
@@ -155,27 +130,21 @@ module.exports = class ThreadNavigator {
 			this.unmount();
 			return;
 		}
-		if (
-			this.rail !== layout.rail ||
-			this.content !== layout.content ||
-			!this.root?.isConnected ||
-			!this.browser?.isConnected
-		) {
+		if (this.content !== layout.content || !this.browser?.isConnected) {
 			this.unmount();
 			this.mount(layout);
 		}
-		if (layout.toolbar && !this.headerButton?.isConnected)
-			this.mountHeaderButton(layout.toolbar);
+		this.mountNativeButton(layout.toolbar);
 		if (this.channel?.parentId !== channel.parentId) {
-			this.sideLimit = 30;
 			this.browserLimit = 40;
+			if (this.channel) this.full = false;
 		}
 		this.channel = channel;
-		this.rail.classList.add("tn-rail");
 		this.applyMode();
 		const threads = this.getThreads(channel);
 		const signature = JSON.stringify([
 			channel.parentId,
+			channel.selectedThreadId,
 			threads.map((thread) => [
 				thread.id,
 				thread.name,
@@ -188,7 +157,7 @@ module.exports = class ThreadNavigator {
 		if (signature !== this.signature) {
 			this.signature = signature;
 			this.threads = threads;
-			this.renderLists();
+			this.renderBrowser();
 		}
 	}
 
@@ -236,64 +205,10 @@ module.exports = class ThreadNavigator {
 			);
 	}
 
-	mount({ members, rail, content, chat, toolbar }) {
-		this.members = members;
-		this.rail = rail;
+	mount({ content, chat }) {
 		this.content = content;
 		this.chat = chat;
 		this.signature = null;
-
-		this.root = node("div", "tn-root");
-		const tabs = node("div", "tn-tabs");
-		tabs.setAttribute("role", "tablist");
-		this.threadsTab = node("button", "tn-tab", "Threads");
-		this.membersTab = node("button", "tn-tab", "Members");
-		for (const [button, mode] of [
-			[this.threadsTab, "threads"],
-			[this.membersTab, "members"],
-		]) {
-			button.type = "button";
-			button.setAttribute("role", "tab");
-			button.addEventListener("click", () => this.setMode(mode));
-			tabs.append(button);
-		}
-		const expand = node("button", "tn-expand", "⤢");
-		expand.type = "button";
-		expand.title = "Open full thread browser";
-		expand.setAttribute("aria-label", "Open full thread browser");
-		expand.addEventListener("click", () => this.setFull(true));
-		tabs.append(expand);
-		this.root.append(tabs);
-
-		const side = node("div", "tn-sidebody");
-		side.setAttribute("role", "tabpanel");
-		const searchWrap = node("div", "tn-search-wrap");
-		const search = node("input", "tn-search");
-		search.type = "search";
-		search.placeholder = "Find a thread";
-		search.setAttribute("aria-label", "Find a thread in side panel");
-		search.value = this.sideQuery;
-		search.addEventListener("input", () => {
-			this.sideQuery = search.value;
-			this.sideLimit = 30;
-			this.renderSide();
-		});
-		searchWrap.append(search);
-		this.sideList = node("div", "tn-list");
-		this.sideList.addEventListener("scroll", () => {
-			if (
-				this.sideList.scrollTop + this.sideList.clientHeight >=
-				this.sideList.scrollHeight - 180
-			) {
-				if (this.sideLimit >= (this.sideTotal ?? 0)) return;
-				this.sideLimit += 30;
-				this.renderSide();
-			}
-		});
-		side.append(searchWrap, this.sideList);
-		this.root.append(side);
-		rail.insertBefore(this.root, members);
-
 		this.browser = node("div", "tn-browser");
 		const bar = node("div", "tn-browser-bar");
 		this.browserTitle = node("div", "tn-browser-title", "Threads");
@@ -304,13 +219,13 @@ module.exports = class ThreadNavigator {
 		close.addEventListener("click", () => this.setFull(false));
 		bar.append(this.browserTitle, close);
 		const controls = node("div", "tn-browser-controls");
-		const browserSearch = node("input", "tn-search");
-		browserSearch.type = "search";
-		browserSearch.placeholder = "Search threads";
-		browserSearch.setAttribute("aria-label", "Search threads in browser");
-		browserSearch.value = this.browserQuery;
-		browserSearch.addEventListener("input", () => {
-			this.browserQuery = browserSearch.value;
+		const search = node("input", "tn-search");
+		search.type = "search";
+		search.placeholder = "Search threads";
+		search.setAttribute("aria-label", "Search threads in browser");
+		search.value = this.browserQuery;
+		search.addEventListener("input", () => {
+			this.browserQuery = search.value;
 			this.browserLimit = 40;
 			this.renderBrowser();
 		});
@@ -331,88 +246,116 @@ module.exports = class ThreadNavigator {
 			this.browserLimit = 40;
 			this.renderBrowser();
 		});
-		controls.append(browserSearch, filter);
-		this.browserList = node("div", "tn-browser-grid");
+		const discover = node("button", "tn-discover", "Discord discovery");
+		discover.type = "button";
+		discover.title = "Open Discord's thread discovery";
+		discover.addEventListener("click", () => this.openNativeDiscovery());
+		controls.append(search, filter, discover);
+		this.browserList = node("div", "tn-browser-list");
 		this.browserList.addEventListener("scroll", () => {
+			if (this.browserLimit >= (this.browserTotal ?? 0)) return;
 			if (
 				this.browserList.scrollTop + this.browserList.clientHeight >=
 				this.browserList.scrollHeight - 240
 			) {
-				if (this.browserLimit >= (this.browserTotal ?? 0)) return;
 				this.browserLimit += 40;
 				this.renderBrowser();
 			}
 		});
 		this.browser.append(bar, controls, this.browserList);
 		content.insertBefore(this.browser, chat);
-		if (toolbar) this.mountHeaderButton(toolbar);
 	}
 
-	mountHeaderButton(toolbar) {
-		this.headerButton?.remove();
-		this.headerButton = node("button", "tn-header-button");
-		this.headerButton.type = "button";
-		this.headerButton.title = "Toggle full thread browser";
-		this.headerButton.setAttribute("aria-label", "Toggle full thread browser");
-		this.headerButton.innerHTML =
-			'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/><circle cx="7" cy="6" r="1" fill="currentColor"/><circle cx="7" cy="12" r="1" fill="currentColor"/><circle cx="7" cy="18" r="1" fill="currentColor"/></svg>';
-		this.headerButton.addEventListener("click", () => this.setFull(!this.full));
-		toolbar.prepend(this.headerButton);
-		this.headerButton.setAttribute("aria-pressed", String(this.full));
+	mountNativeButton(toolbar) {
+		const button = toolbar?.querySelector(
+			'[role="button"][aria-label="Threads"]',
+		);
+		if (button === this.nativeButton) return;
+		this.nativeButton?.removeEventListener(
+			"click",
+			this.onNativeThreadsClick,
+			true,
+		);
+		this.nativeButton?.removeEventListener(
+			"keydown",
+			this.onNativeThreadsKeyDown,
+			true,
+		);
+		if (this.nativeButton) this.nativeButton.title = this.nativeButtonTitle;
+		this.nativeButton = button ?? null;
+		if (!button) return;
+		this.nativeButtonTitle = button.title;
+		button.title = "Toggle thread browser";
+		button.addEventListener("click", this.onNativeThreadsClick, true);
+		button.addEventListener("keydown", this.onNativeThreadsKeyDown, true);
+		button.setAttribute("aria-pressed", String(this.full));
+	}
+
+	onNativeThreadsKeyDown(event) {
+		if (!["Enter", " "].includes(event.key)) return;
+		event.preventDefault();
+		event.stopImmediatePropagation();
+		this.setFull(!this.full);
+	}
+
+	onNativeThreadsClick(event) {
+		if (this.allowNativeOnce) {
+			this.allowNativeOnce = false;
+			return;
+		}
+		event.preventDefault();
+		event.stopImmediatePropagation();
+		this.setFull(!this.full);
+	}
+
+	openNativeDiscovery() {
+		if (!this.nativeButton?.isConnected) return;
+		this.allowNativeOnce = true;
+		this.nativeButton.click();
+		this.allowNativeOnce = false;
 	}
 
 	unmount() {
-		this.rail?.classList.remove("tn-rail", "tn-threads-active");
+		this.nativeButton?.removeEventListener(
+			"click",
+			this.onNativeThreadsClick,
+			true,
+		);
+		this.nativeButton?.removeEventListener(
+			"keydown",
+			this.onNativeThreadsKeyDown,
+			true,
+		);
+		if (this.nativeButton) {
+			this.nativeButton.title = this.nativeButtonTitle;
+			this.nativeButton.removeAttribute("aria-pressed");
+		}
+		this.nativeButton = null;
 		this.content?.classList.remove("tn-full-active");
-		this.root?.remove();
 		this.browser?.remove();
-		this.headerButton?.remove();
-		this.rail = this.content = this.root = this.browser = null;
-		this.headerButton = null;
+		this.content = this.browser = null;
 		this.signature = null;
 	}
 
-	setMode(mode) {
-		this.mode = mode;
-		this.applyMode();
-		this.renderSide();
-	}
-
 	applyMode() {
-		if (!this.root || !this.rail) return;
-		this.root.dataset.mode = this.mode;
-		this.rail.classList.toggle("tn-threads-active", this.mode === "threads");
-		this.threadsTab.setAttribute(
-			"aria-selected",
-			String(this.mode === "threads"),
-		);
-		this.membersTab.setAttribute(
-			"aria-selected",
-			String(this.mode === "members"),
-		);
-		this.content.classList.toggle("tn-full-active", this.full);
-		this.headerButton?.setAttribute("aria-pressed", String(this.full));
+		this.content?.classList.toggle("tn-full-active", this.full);
+		this.nativeButton?.setAttribute("aria-pressed", String(this.full));
 	}
 
 	setFull(full) {
 		if (full === this.full) return;
-		if (full) {
-			this.modeBeforeFull = this.mode;
-			this.mode = "members";
-		} else if (this.modeBeforeFull) {
-			this.mode = this.modeBeforeFull;
-			this.modeBeforeFull = null;
-		}
 		this.full = full;
 		this.applyMode();
-		this.renderSide();
 		this.renderBrowser();
 	}
 
 	makeThreadItem(thread) {
+		const selected = thread.id === this.channel.selectedThreadId;
 		const item = node(
 			"div",
-			"tn-item" + (thread.unread ? " tn-item-unread" : ""),
+			"tn-item" +
+				(thread.unread ? " tn-item-unread" : "") +
+				(selected ? " tn-item-selected" : ""),
 		);
 		const link = node("a", "tn-item-link");
 		link.href = `/channels/${this.channel.guildId}/${this.channel.parentId}/threads/${thread.id}`;
@@ -431,6 +374,7 @@ module.exports = class ThreadNavigator {
 				: thread.unread
 					? "Unread"
 					: "",
+			selected ? "Open on right" : "",
 		]
 			.filter(Boolean)
 			.join(" · ");
@@ -448,60 +392,6 @@ module.exports = class ThreadNavigator {
 		});
 		item.append(tab);
 		return item;
-	}
-
-	renderLists() {
-		this.renderSide();
-		this.renderBrowser();
-	}
-
-	renderSide() {
-		if (!this.sideList || !this.channel) return;
-		if (this.mode !== "threads") {
-			if (this.sideList.childElementCount) this.sideList.replaceChildren();
-			return;
-		}
-		const scrollTop = this.sideList.scrollTop;
-		this.sideList.replaceChildren();
-		const query = this.sideQuery.trim().toLocaleLowerCase();
-		const threads = (this.threads ?? []).filter(
-			(thread) =>
-				!thread.archived && thread.name.toLocaleLowerCase().includes(query),
-		);
-		this.sideTotal = threads.length;
-		if (threads.length) {
-			this.sideList.append(
-				...threads
-					.slice(0, this.sideLimit)
-					.map((thread) => this.makeThreadItem(thread)),
-			);
-			if (threads.length > this.sideLimit)
-				this.sideList.append(
-					node(
-						"div",
-						"tn-load",
-						`Showing ${this.sideLimit} of ${threads.length}. Scroll for more.`,
-					),
-				);
-			this.sideList.scrollTop = scrollTop;
-			return;
-		}
-		const empty = node(
-			"div",
-			"tn-empty",
-			query
-				? "No matching active threads."
-				: "No active threads loaded for this channel.",
-		);
-		if (!query) {
-			const discover = node("button", "", "Open Discord thread discovery");
-			discover.type = "button";
-			discover.addEventListener("click", () =>
-				document.querySelector('button[aria-label="Threads"]')?.click(),
-			);
-			empty.append(discover);
-		}
-		this.sideList.append(empty);
 	}
 
 	renderBrowser() {
@@ -559,31 +449,11 @@ module.exports = class ThreadNavigator {
 			});
 			return;
 		}
-		this.setFull(false);
 		const url = `/channels/${this.channel.guildId}/${this.channel.parentId}/threads/${thread.id}`;
 		if (typeof transitionTo === "function") transitionTo(url);
 		else
 			UI.showToast("Discord thread navigation is unavailable.", {
 				type: "error",
 			});
-	}
-
-	getSettingsPanel() {
-		return UI.buildSettingsPanel({
-			settings: [
-				{
-					id: "startOnThreads",
-					type: "switch",
-					name: "Show Threads when opening a channel",
-					note: "Use the Threads tab in the right sidebar by default. You can switch to Members at any time.",
-					value: this.settings.startOnThreads,
-					onChange: (value) => {
-						this.settings.startOnThreads = value;
-						Data.save("settings", this.settings);
-						this.setMode(value ? "threads" : "members");
-					},
-				},
-			],
-		});
 	}
 };

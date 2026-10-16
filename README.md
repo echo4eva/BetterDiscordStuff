@@ -8,7 +8,7 @@ This fork includes [ChannelTabsMac](Plugins/ChannelTabsMac/README.md), a macOS v
 
 ## ThreadNavigator
 
-[ThreadNavigator](Plugins/ThreadNavigator/README.md) adds a persistent Threads tab next to Members in the right sidebar and a larger thread browser that can take over the chat area. It includes search, loaded archived-thread filters, and optional one-click opening in ChannelTabsMac tabs. It can be installed separately from ChannelTabsMac.
+[ThreadNavigator](Plugins/ThreadNavigator/README.md) turns Discord's Threads button into a searchable browser in the channel chat area. Selecting a thread opens its chat on the right while the browser stays visible. It includes loaded archived-thread filters and optional one-click opening in ChannelTabsMac tabs.
 
 ### Problems
 
