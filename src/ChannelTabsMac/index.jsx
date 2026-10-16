@@ -3473,11 +3473,13 @@ module.exports = class ChannelTabs {
 		};
 		this.saveSettings = this.saveSettings.bind(this);
 		this.keybindHandler = this.keybindHandler.bind(this);
+		this.commandClickHandler = this.commandClickHandler.bind(this);
 		this.onSwitch();
 		this.patchTitleBar(this.promises.state);
 		this.patchContextMenus();
 		this.ifReopenLastChannelDefault();
 		document.addEventListener("keydown", this.keybindHandler);
+		document.addEventListener("click", this.commandClickHandler, true);
 		window.onclick = (event) => this.clickHandler(event);
 		this.showChangelog();
 	}
@@ -3485,6 +3487,7 @@ module.exports = class ChannelTabs {
 	stop() {
 		this.removeStyle();
 		document.removeEventListener("keydown", this.keybindHandler);
+		document.removeEventListener("click", this.commandClickHandler, true);
 		window.onclick = null;
 		Patcher.unpatchAll();
 		this.promises.cancel();
@@ -4451,6 +4454,56 @@ html:not(.platform-win) #channelTabs-settingsMenu {
 		}
 	}
 
+	commandClickHandler(e) {
+		if (
+			process.platform !== "darwin" ||
+			!this.settings.showTabBar ||
+			!TopBarRef.current ||
+			e.button !== 0 ||
+			!(e.target instanceof Element)
+		)
+			return;
+		const shortcut = this.settings.sidebarTabShortcut ?? "meta";
+		const pressedModifiers = [
+			e.metaKey && "meta",
+			e.altKey && "alt",
+			e.ctrlKey && "ctrl",
+			e.shiftKey && "shift",
+		]
+			.filter(Boolean)
+			.join("+");
+		if (shortcut === "off" || pressedModifiers !== shortcut) return;
+
+		const link = e.target.closest("a[href]");
+		if (
+			!link ||
+			!link.closest('[aria-label="Channels"], [aria-label="Direct Messages"]')
+		)
+			return;
+
+		const url = new URL(link.href, location.href);
+		if (url.origin !== location.origin) return;
+		const match = url.pathname.match(
+			/^\/channels\/(\d+|@me)\/(\d+)(?:\/threads\/(\d+))?\/?$/,
+		);
+		if (!match) return;
+
+		const [, guildId, parentChannelId, threadId] = match;
+		const channelId = threadId || parentChannelId;
+		const channel = ChannelStore.getChannel(channelId);
+		if (!channel) return;
+
+		e.preventDefault();
+		e.stopPropagation();
+		const name =
+			guildId === "@me"
+				? channel.name || getCurrentName(`/channels/@me/${channelId}`)
+				: channel.name
+					? `#${channel.name}`
+					: getCurrentName(url.pathname);
+		TopBarRef.current.saveChannel(guildId, channelId, name);
+	}
+
 	keybindHandler(e) {
 		const keybinds = [
 			{
@@ -4608,6 +4661,7 @@ html:not(.platform-win) #channelTabs-settingsMenu {
 			showEmptyFavGroupBadges: false,
 			showQuickSettings: true,
 			showNavButtons: true,
+			sidebarTabShortcut: "meta",
 			alwaysFocusNewTabs: false,
 			useStandardNav: true,
 		};
@@ -4850,6 +4904,25 @@ html:not(.platform-win) #channelTabs-settingsMenu {
 					type: "category",
 					name: "Behavior",
 					settings: [
+						{
+							id: "sidebarTabShortcut",
+							type: "dropdown",
+							name: "Open sidebar item in new tab",
+							note: "Choose a modifier to hold while clicking a channel, thread, or direct message in the sidebar. The new tab follows your auto-focus setting.",
+							value: this.settings.sidebarTabShortcut ?? "meta",
+							options: [
+								{ label: "Command-click", value: "meta" },
+								{ label: "Command-Shift-click", value: "meta+shift" },
+								{ label: "Option-click", value: "alt" },
+								{ label: "Option-Shift-click", value: "alt+shift" },
+								{ label: "Shift-click", value: "shift" },
+								{ label: "Off", value: "off" },
+							],
+							onChange: (value) => {
+								this.settings.sidebarTabShortcut = value;
+								this.saveSettings();
+							},
+						},
 						{
 							id: "alwaysFocusNewTabs",
 							type: "switch",
