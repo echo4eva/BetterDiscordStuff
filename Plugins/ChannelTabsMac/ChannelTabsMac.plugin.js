@@ -2,7 +2,7 @@
  * @name ChannelTabsMac
  * @author samfundev, l0c4lh057, CarJem Generations
  * @description ChannelTabs with navigation beside the macOS window controls.
- * @version 2.8.9-mac.4
+ * @version 2.8.9-mac.5
  * @authorId 76052829285916672
  * @donate https://github.com/sponsors/samfundev
  * @source https://github.com/echo4eva/BetterDiscordStuff/blob/master/src/ChannelTabsMac/index.jsx
@@ -31,6 +31,13 @@
 
 @else@*/
 const CHANGES = {
+	"2.8.9-mac.5": {
+		added: ["Configurable close-tab shortcut for ChannelTabsMac"],
+		improved: [
+			"Fill thread browser and match Discord scrolling",
+			"Keep thread browser beside side chat",
+		],
+	},
 	"2.8.9-mac.4": {
 		added: ["thread sidebar and full browser for Discord"],
 	},
@@ -43,6 +50,65 @@ const CHANGES = {
 };
 // src/ChannelTabsMac/index.jsx
 var pluginMeta;
+var DEFAULT_CLOSE_TAB_SHORTCUT = ["Alt", "W"];
+function getCloseTabShortcut(settings) {
+	return settings.closeTabShortcut ?? [...DEFAULT_CLOSE_TAB_SHORTCUT];
+}
+function formatCloseTabShortcut(shortcut) {
+	if (!Array.isArray(shortcut) || shortcut.length === 0) return "Off";
+	return shortcut
+		.map((part) => {
+			const key = String(part).toLowerCase();
+			if (key === "alt" || key === "option")
+				return process.platform === "darwin" ? "Option" : "Alt";
+			if (key === "meta" || key === "command" || key === "cmd")
+				return process.platform === "darwin" ? "Command" : "Meta";
+			if (key === "control" || key === "ctrl") return "Ctrl";
+			if (key === "shift") return "Shift";
+			return String(part).toUpperCase();
+		})
+		.join(" + ");
+}
+function matchesShortcut(event, shortcut) {
+	if (!Array.isArray(shortcut) || shortcut.length === 0) return false;
+	const parts = shortcut.map((part) => String(part).toLowerCase());
+	const modifiers = {
+		alt: parts.some((part) => part === "alt" || part === "option"),
+		ctrl: parts.some((part) => part === "control" || part === "ctrl"),
+		meta: parts.some((part) => ["meta", "command", "cmd"].includes(part)),
+		shift: parts.includes("shift"),
+	};
+	if (
+		event.altKey !== modifiers.alt ||
+		event.ctrlKey !== modifiers.ctrl ||
+		event.metaKey !== modifiers.meta ||
+		event.shiftKey !== modifiers.shift
+	)
+		return false;
+	const keys = parts.filter(
+		(part) =>
+			![
+				"alt",
+				"option",
+				"control",
+				"ctrl",
+				"meta",
+				"command",
+				"cmd",
+				"shift",
+			].includes(part),
+	);
+	if (keys.length !== 1) return false;
+	const key = keys[0];
+	const code = String(event.code ?? "").toLowerCase();
+	return (
+		code === key ||
+		code === `key${key}` ||
+		code === `digit${key}` ||
+		String(event.key ?? "").toLowerCase() === key ||
+		(key.length === 1 && event.keyCode === key.toUpperCase().charCodeAt(0))
+	);
+}
 var { ContextMenu, Patcher, Webpack, React, DOM, ReactUtils, UI } = new BdApi(
 	"ChannelTabsMac",
 );
@@ -934,7 +1000,7 @@ function CreateSettingsContextMenu(instance, e) {
 												"white-space": "pre-wrap",
 											},
 										},
-										`Ctrl + W - Close Current Tab
+										`${formatCloseTabShortcut(getCloseTabShortcut(instance.props.plugin.settings))} - Close Current Tab
 Ctrl + PgUp - Navigate to Left Tab
 Ctrl + PgDn - Navigate to Right Tab
 `,
@@ -4433,12 +4499,18 @@ html:not(.platform-win) #channelTabs-settingsMenu {
 		TopBarRef.current.saveChannel(guildId, channelId, name);
 	}
 	keybindHandler(e) {
+		if (
+			!e.repeat &&
+			!e.isComposing &&
+			TopBarRef.current?.state.tabs.length > 1 &&
+			matchesShortcut(e, getCloseTabShortcut(this.settings))
+		) {
+			e.preventDefault();
+			e.stopPropagation();
+			this.closeCurrentTab();
+			return;
+		}
 		const keybinds = [
-			{
-				ctrlKey: true,
-				keyCode: 87,
-				action: this.closeCurrentTab,
-			},
 			{
 				ctrlKey: true,
 				keyCode: 33,
@@ -4459,6 +4531,7 @@ html:not(.platform-win) #channelTabs-settingsMenu {
 			if (
 				e.altKey === (keybind.altKey ?? false) &&
 				e.ctrlKey === (keybind.ctrlKey ?? false) &&
+				e.metaKey === (keybind.metaKey ?? false) &&
 				e.shiftKey === (keybind.shiftKey ?? false) &&
 				e.keyCode === keybind.keyCode
 			) {
@@ -4575,6 +4648,7 @@ html:not(.platform-win) #channelTabs-settingsMenu {
 			showEmptyFavGroupBadges: false,
 			showQuickSettings: true,
 			showNavButtons: true,
+			closeTabShortcut: [...DEFAULT_CLOSE_TAB_SHORTCUT],
 			sidebarTabShortcut: "meta",
 			alwaysFocusNewTabs: false,
 			useStandardNav: true,
@@ -4810,6 +4884,19 @@ html:not(.platform-win) #channelTabs-settingsMenu {
 					type: "category",
 					name: "Behavior",
 					settings: [
+						{
+							id: "closeTabShortcut",
+							type: "keybind",
+							name: "Close current tab",
+							note: "Default: Option + W. Click to record a different shortcut, or clear it to turn this off.",
+							value: getCloseTabShortcut(this.settings),
+							max: 4,
+							clearable: true,
+							onChange: (value) => {
+								this.settings.closeTabShortcut = value;
+								this.saveSettings();
+							},
+						},
 						{
 							id: "sidebarTabShortcut",
 							type: "dropdown",

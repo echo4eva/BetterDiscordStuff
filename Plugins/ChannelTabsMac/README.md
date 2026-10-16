@@ -4,6 +4,8 @@ ChannelTabsMac is a macOS layout variant of [ChannelTabs](../ChannelTabs/README.
 
 On macOS, **Command-click** a channel, thread, or direct message in Discord's sidebar to open it in a ChannelTabs tab. Your current view stays open unless you have enabled **Always focus new tabs**. In **ChannelTabsMac → Settings → Behavior**, choose a different click shortcut (Command-Shift, Option, Option-Shift, or Shift) or turn it off. The existing **ChannelTabs → Open in new tab** right-click menu remains available.
 
+Press **Option-W** to close the current tab when more than one tab is open. In **ChannelTabsMac → Settings → Behavior → Close current tab**, record a different keybind or clear it to disable the shortcut. The quick settings menu shows the currently assigned keybind.
+
 [ThreadNavigator](../ThreadNavigator/README.md) can also open its listed threads in ChannelTabsMac tabs using the arrow beside each thread or Command-click on its name.
 
 ## Install
