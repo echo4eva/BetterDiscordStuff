@@ -77,7 +77,8 @@ export default {
 				// Merge root meta
 				for (const key in rootMeta) {
 					if (key === "maintainers") {
-						meta[key] = [...rootMeta[key], ...meta[key]];
+						if (!meta.ownMaintainersOnly)
+							meta[key] = [...rootMeta[key], ...meta[key]];
 						continue;
 					}
 
@@ -90,9 +91,10 @@ export default {
 					.replace(/\b\w/g, (l) => l.toUpperCase())
 					.replace(/-/g, "");
 
-				meta.authorId = meta.maintainers[0].discord_id;
+				if (meta.maintainers[0].discord_id)
+					meta.authorId = meta.maintainers[0].discord_id;
 				meta.author = meta.maintainers.map((m) => m.name).join(", ");
-				meta.donate = meta.funding;
+				if (meta.funding) meta.donate = meta.funding;
 				meta.source = `${meta.repository.url}/blob/master/${entryPoint}`;
 			} catch (e) {
 				console.error(e);
@@ -168,8 +170,12 @@ export default {
 					version = uncommittedVersion;
 
 				for (const line of all) {
+					let createdHere = false;
 					if ((line.diff?.files ?? []).some((f) => f.file === packagePath)) {
 						version = await getVersion(line);
+						createdHere = !(await git
+							.show(`${line.hash}^:${packagePath}`)
+							.catch(() => null));
 					}
 
 					if (!version) continue;
@@ -178,14 +184,15 @@ export default {
 					const prefix = prefixes.find((p) =>
 						line.message.startsWith(`${p}: `),
 					);
-					if (!prefix) continue;
+					if (prefix) {
+						const message = line.message.slice(prefix.length + 1).trim();
 
-					const message = line.message.slice(prefix.length + 1).trim();
+						if (!(version in versions)) versions[version] = {};
+						if (!(prefix in versions[version])) versions[version][prefix] = [];
 
-					if (!(version in versions)) versions[version] = {};
-					if (!(prefix in versions[version])) versions[version][prefix] = [];
-
-					versions[version][prefix].push(message);
+						versions[version][prefix].push(message);
+					}
+					if (createdHere) break;
 				}
 
 				const changesScript = `const CHANGES = ${JSON.stringify(versions, null, 2)};\n`;

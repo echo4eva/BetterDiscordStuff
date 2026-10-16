@@ -1,6 +1,6 @@
 {
 	"description": "ChannelTabs with navigation beside the macOS window controls.",
-	"version": "2.8.9-mac.3",
+	"version": "2.8.9-mac.4",
 	"name": "channel-tabs-mac",
 	"repository": {
 		"type": "git",

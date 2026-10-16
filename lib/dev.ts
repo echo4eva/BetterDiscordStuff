@@ -5,7 +5,9 @@ import bdPlugin from "./bd-plugin.ts";
 const ctx = await context({
 	entryPoints: process.argv.includes("--mac")
 		? ["src/ChannelTabsMac/index.jsx"]
-		: await Array.fromAsync(glob("src/**/index.*")),
+		: process.argv.includes("--thread-navigator")
+			? ["src/ThreadNavigator/index.jsx"]
+			: await Array.fromAsync(glob("src/**/index.*")),
 	outdir: "Plugins",
 	entryNames: "[dir]/[dir].plugin",
 	outbase: "src",

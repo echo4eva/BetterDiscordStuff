@@ -3478,6 +3478,14 @@ module.exports = class ChannelTabs {
 		this.patchTitleBar(this.promises.state);
 		this.patchContextMenus();
 		this.ifReopenLastChannelDefault();
+		this.tabApi = {
+			openChannelInTab: (guildId, channelId, name) => {
+				if (!this.settings.showTabBar || !TopBarRef.current) return false;
+				TopBarRef.current.saveChannel(guildId, channelId, name);
+				return true;
+			},
+		};
+		globalThis.__ChannelTabsMacTabAPI = this.tabApi;
 		document.addEventListener("keydown", this.keybindHandler);
 		document.addEventListener("click", this.commandClickHandler, true);
 		window.onclick = (event) => this.clickHandler(event);
@@ -3485,6 +3493,8 @@ module.exports = class ChannelTabs {
 	}
 
 	stop() {
+		if (globalThis.__ChannelTabsMacTabAPI === this.tabApi)
+			delete globalThis.__ChannelTabsMacTabAPI;
 		this.removeStyle();
 		document.removeEventListener("keydown", this.keybindHandler);
 		document.removeEventListener("click", this.commandClickHandler, true);

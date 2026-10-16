@@ -1,0 +1,16 @@
+{
+	"description": "A persistent thread list beside Discord channels with a full chat-area browser.",
+	"version": "0.1.0",
+	"name": "thread-navigator",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/echo4eva/BetterDiscordStuff"
+	},
+	"ownMaintainersOnly": true,
+	"funding": "",
+	"maintainers": [
+		{
+			"name": "echo4eva"
+		}
+	]
+}

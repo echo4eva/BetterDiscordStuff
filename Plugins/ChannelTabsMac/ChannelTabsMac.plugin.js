@@ -2,7 +2,7 @@
  * @name ChannelTabsMac
  * @author samfundev, l0c4lh057, CarJem Generations
  * @description ChannelTabs with navigation beside the macOS window controls.
- * @version 2.8.9-mac.3
+ * @version 2.8.9-mac.4
  * @authorId 76052829285916672
  * @donate https://github.com/sponsors/samfundev
  * @source https://github.com/echo4eva/BetterDiscordStuff/blob/master/src/ChannelTabsMac/index.jsx
@@ -31,6 +31,9 @@
 
 @else@*/
 const CHANGES = {
+	"2.8.9-mac.4": {
+		added: ["thread sidebar and full browser for Discord"],
+	},
 	"2.8.9-mac.3": {
 		added: ["Configurable sidebar click shortcut for new tabs"],
 	},
@@ -3439,12 +3442,22 @@ module.exports = class ChannelTabs {
 		this.patchTitleBar(this.promises.state);
 		this.patchContextMenus();
 		this.ifReopenLastChannelDefault();
+		this.tabApi = {
+			openChannelInTab: (guildId, channelId, name) => {
+				if (!this.settings.showTabBar || !TopBarRef.current) return false;
+				TopBarRef.current.saveChannel(guildId, channelId, name);
+				return true;
+			},
+		};
+		globalThis.__ChannelTabsMacTabAPI = this.tabApi;
 		document.addEventListener("keydown", this.keybindHandler);
 		document.addEventListener("click", this.commandClickHandler, true);
 		window.onclick = (event) => this.clickHandler(event);
 		this.showChangelog();
 	}
 	stop() {
+		if (globalThis.__ChannelTabsMacTabAPI === this.tabApi)
+			delete globalThis.__ChannelTabsMacTabAPI;
 		this.removeStyle();
 		document.removeEventListener("keydown", this.keybindHandler);
 		document.removeEventListener("click", this.commandClickHandler, true);
