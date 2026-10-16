@@ -2,7 +2,7 @@
  * @name ChannelTabsMac
  * @author samfundev, l0c4lh057, CarJem Generations
  * @description ChannelTabs with navigation beside the macOS window controls.
- * @version 2.8.9-mac.5
+ * @version 2.8.9-mac.6
  * @authorId 76052829285916672
  * @donate https://github.com/sponsors/samfundev
  * @source https://github.com/echo4eva/BetterDiscordStuff/blob/master/src/ChannelTabsMac/index.jsx
@@ -31,6 +31,9 @@
 
 @else@*/
 const CHANGES = {
+	"2.8.9-mac.6": {
+		added: ["Open ChannelTabsMac bookmarks with tab shortcut"],
+	},
 	"2.8.9-mac.5": {
 		added: ["Configurable close-tab shortcut for ChannelTabsMac"],
 		improved: [
@@ -107,6 +110,19 @@ function matchesShortcut(event, shortcut) {
 		code === `digit${key}` ||
 		String(event.key ?? "").toLowerCase() === key ||
 		(key.length === 1 && event.keyCode === key.toUpperCase().charCodeAt(0))
+	);
+}
+function matchesClickShortcut(event, shortcut) {
+	if (shortcut === "off") return false;
+	return (
+		[
+			event.metaKey && "meta",
+			event.altKey && "alt",
+			event.ctrlKey && "ctrl",
+			event.shiftKey && "shift",
+		]
+			.filter(Boolean)
+			.join("+") === shortcut
 	);
 }
 var { ContextMenu, Patcher, Webpack, React, DOM, ReactUtils, UI } = new BdApi(
@@ -2345,13 +2361,24 @@ var Fav = (props) =>
 			"data-mention-count": props.mentionCount,
 			"data-unread-count": props.unreadCount,
 			"data-unread-estimated": props.unreadEstimated,
-			onClick: () =>
-				props.guildId
-					? NavigationUtils.transitionToGuild(
-							props.guildId,
-							SelectedChannelStore.getChannelId(props.guildId),
-						)
-					: NavigationUtils.transitionTo(props.url),
+			onClick: (e) => {
+				if (
+					process.platform === "darwin" &&
+					props.showTabBar &&
+					matchesClickShortcut(e, props.getTabOpenShortcut())
+				) {
+					e.preventDefault();
+					e.stopPropagation();
+					props.openInNewTab();
+					return;
+				}
+				if (props.guildId)
+					NavigationUtils.transitionToGuild(
+						props.guildId,
+						SelectedChannelStore.getChannelId(props.guildId),
+					);
+				else NavigationUtils.transitionTo(props.url);
+			},
 			onMouseUp: (e) => {
 				if (e.button !== 1) return;
 				e.preventDefault();
@@ -2527,6 +2554,8 @@ var FavItems = (props) => {
 								channelId: fav.channelId,
 								guildId: fav.guildId,
 								groupId: fav.groupId,
+								showTabBar: props.showTabBar,
+								getTabOpenShortcut: props.getTabOpenShortcut,
 								showFavUnreadBadges: props.showFavUnreadBadges,
 								showFavMentionBadges: props.showFavMentionBadges,
 								showFavTypingBadge: props.showFavTypingBadge,
@@ -3445,6 +3474,9 @@ var TopBar = class TopBar2 extends React.Component {
 						showFavGroupMentionBadges: this.state.showFavGroupMentionBadges,
 						showFavGroupTypingBadge: this.state.showFavGroupTypingBadge,
 						showEmptyFavGroupBadges: this.state.showEmptyFavGroupBadges,
+						showTabBar: this.state.showTabBar,
+						getTabOpenShortcut: () =>
+							this.props.plugin.settings.sidebarTabShortcut ?? "meta",
 						rename: this.renameFav,
 						delete: this.deleteFav,
 						addToFavs: this.addToFavs,
@@ -4462,16 +4494,8 @@ html:not(.platform-win) #channelTabs-settingsMenu {
 			!(e.target instanceof Element)
 		)
 			return;
-		const shortcut = this.settings.sidebarTabShortcut ?? "meta";
-		const pressedModifiers = [
-			e.metaKey && "meta",
-			e.altKey && "alt",
-			e.ctrlKey && "ctrl",
-			e.shiftKey && "shift",
-		]
-			.filter(Boolean)
-			.join("+");
-		if (shortcut === "off" || pressedModifiers !== shortcut) return;
+		if (!matchesClickShortcut(e, this.settings.sidebarTabShortcut ?? "meta"))
+			return;
 		const link = e.target.closest("a[href]");
 		if (
 			!link ||
@@ -4900,8 +4924,8 @@ html:not(.platform-win) #channelTabs-settingsMenu {
 						{
 							id: "sidebarTabShortcut",
 							type: "dropdown",
-							name: "Open sidebar item in new tab",
-							note: "Choose a modifier to hold while clicking a channel, thread, or direct message in the sidebar. The new tab follows your auto-focus setting.",
+							name: "Open sidebar item or bookmark in new tab",
+							note: "Choose a modifier to hold while clicking a channel, thread, direct message, or bookmark. The new tab follows your auto-focus setting.",
 							value: this.settings.sidebarTabShortcut ?? "meta",
 							options: [
 								{ label: "Command-click", value: "meta" },

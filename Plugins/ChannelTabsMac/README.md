@@ -2,7 +2,7 @@
 
 ChannelTabsMac is a macOS layout variant of [ChannelTabs](../ChannelTabs/README.md) 2.8.9. The three navigation buttons sit together immediately to the right of the native red, yellow, and green window controls. The first tab follows the buttons. The layout change applies only on macOS.
 
-On macOS, **Command-click** a channel, thread, or direct message in Discord's sidebar to open it in a ChannelTabs tab. Your current view stays open unless you have enabled **Always focus new tabs**. In **ChannelTabsMac → Settings → Behavior**, choose a different click shortcut (Command-Shift, Option, Option-Shift, or Shift) or turn it off. The existing **ChannelTabs → Open in new tab** right-click menu remains available.
+On macOS, **Command-click** a channel, thread, direct message, or ChannelTabsMac bookmark to open it in a ChannelTabs tab. This also works for bookmarks inside folders. Your current view stays open unless you have enabled **Always focus new tabs**. In **ChannelTabsMac → Settings → Behavior**, choose a different click shortcut (Command-Shift, Option, Option-Shift, or Shift) or turn it off. The existing **ChannelTabs → Open in new tab** right-click menu remains available.
 
 Press **Option-W** to close the current tab when more than one tab is open. In **ChannelTabsMac → Settings → Behavior → Close current tab**, record a different keybind or clear it to disable the shortcut. The quick settings menu shows the currently assigned keybind.
 
