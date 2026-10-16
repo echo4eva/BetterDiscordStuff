@@ -2,7 +2,7 @@
 
 ThreadNavigator turns Discord's **Threads** button in a text channel into a browser in the middle of the window. It replaces the channel's chat area while open. Clicking a thread opens its chat in Discord's right-side thread panel, so the browser stays visible while you move between threads. Click **×** or the Threads button again to return to the channel chat.
 
-The browser has search and filters for active, loaded archived, and all loaded threads. It marks unread threads and highlights the thread currently open on the right. The arrow beside a thread, or Command-click on its name, opens a [ChannelTabsMac](../ChannelTabsMac/README.md) tab when that plugin is enabled. **Discord discovery** inside the browser opens Discord's original thread discovery view.
+The browser uses Discord's chat scrollbar and stretches each thread row across the available middle pane. It has search and filters for active, loaded archived, and all loaded threads. It marks unread threads and highlights the thread currently open on the right. The arrow beside a thread, or Command-click on its name, opens a [ChannelTabsMac](../ChannelTabsMac/README.md) tab when that plugin is enabled. **Discord discovery** inside the browser opens Discord's original thread discovery view.
 
 ## Install
 
