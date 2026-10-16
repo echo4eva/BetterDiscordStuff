@@ -6,6 +6,7 @@
 	"scripts": {
 		"dev": "node --watch lib/dev.ts",
 		"build": "node lib/dev.ts --build",
+		"build:mac": "node lib/dev.ts --build --mac",
 		"format": "prettier --write ."
 	},
 	"maintainers": [

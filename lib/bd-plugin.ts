@@ -198,9 +198,11 @@ export default {
 				});
 				await writeFile(path, fileContent);
 
-				// Write to BetterDiscord folder
-				const bdFolder = `${process.platform == "win32" ? process.env.APPDATA : process.platform == "darwin" ? `${process.env.HOME}/Library/Preferences` : process.env.XDG_CONFIG_HOME ? process.env.XDG_CONFIG_HOME : `${process.env.HOME}/.config`}/BetterDiscord/`;
-				await copyFile(path, join(bdFolder, "plugins", basename(path)));
+				// Development builds reload in BetterDiscord; release builds stay in Plugins.
+				if (!process.argv.includes("--build")) {
+					const bdFolder = `${process.platform == "win32" ? process.env.APPDATA : process.platform == "darwin" ? `${process.env.HOME}/Library/Application Support` : process.env.XDG_CONFIG_HOME ? process.env.XDG_CONFIG_HOME : `${process.env.HOME}/.config`}/BetterDiscord/`;
+					await copyFile(path, join(bdFolder, "plugins", basename(path)));
+				}
 			}
 		});
 	},

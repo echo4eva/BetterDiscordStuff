@@ -1,0 +1,23 @@
+{
+	"description": "ChannelTabs with navigation beside the macOS window controls.",
+	"version": "2.8.9-mac.2",
+	"name": "channel-tabs-mac",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/echo4eva/BetterDiscordStuff"
+	},
+	"maintainers": [
+		{
+			"name": "l0c4lh057",
+			"discord_id": "226677096091484160",
+			"github_username": "l0c4lh057",
+			"twitter_username": "l0c4lh057"
+		},
+		{
+			"name": "CarJem Generations",
+			"discord_id": "519397452944769025",
+			"github_username": "CarJem",
+			"twitter_username": "carter5467_99"
+		}
+	]
+}
