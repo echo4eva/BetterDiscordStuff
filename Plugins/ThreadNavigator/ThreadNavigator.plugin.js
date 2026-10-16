@@ -2,7 +2,7 @@
  * @name ThreadNavigator
  * @author echo4eva
  * @description A central thread browser that opens selected threads in Discord’s side chat.
- * @version 0.2.2
+ * @version 0.2.3
  * @source https://github.com/echo4eva/BetterDiscordStuff/blob/master/src/ThreadNavigator/index.jsx
  */
 /*@cc_on
@@ -29,6 +29,9 @@
 
 @else@*/
 const CHANGES = {
+	"0.2.3": {
+		fixed: ["Make middle thread browser scrollable"],
+	},
 	"0.2.2": {
 		fixed: ["Keep thread browser open across tab switches"],
 		added: [
@@ -57,7 +60,7 @@ var transitionTo = Webpack.getByStrings("transitionTo - Transitioning to ", {
 });
 var css = `
 .tn-full-active > main[class*="chatContent"] { display: none !important; }
-.tn-browser { display: none; flex: 1; flex-direction: column; min-width: 0; min-height: 0; color: var(--text-default); background: var(--background-base-low); }
+.tn-browser { display: none; flex: 1; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; color: var(--text-default); background: var(--background-base-low); }
 .tn-full-active > .tn-browser { display: flex; }
 .tn-browser-bar { display: flex; align-items: center; gap: 10px; padding: 16px 16px 8px; flex-shrink: 0; }
 .tn-browser-title { min-width: 0; flex: 1; font-size: 20px; font-weight: 700; }
@@ -67,8 +70,11 @@ var css = `
 .tn-browser-controls { display: flex; gap: 8px; padding: 4px 16px 12px; flex-shrink: 0; }
 .tn-search { min-width: 0; flex: 1; box-sizing: border-box; border: 0; outline: 0; border-radius: 6px; padding: 8px 10px; color: var(--text-default); background: var(--background-base-lower); font: inherit; font-size: 13px; }
 .tn-filter, .tn-discover { border: 0; border-radius: 6px; padding: 6px 10px; background: var(--background-base-lower); color: var(--text-default); font: inherit; cursor: pointer; }
-.tn-browser-list { display: flex; flex-direction: column; gap: 5px; min-height: 0; padding: 4px 8px 24px 16px; }
-.tn-item { display: flex; align-items: center; gap: 8px; width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid var(--border-subtle); border-radius: 7px; background: var(--background-base-lower); color: var(--text-default); }
+.tn-browser > .tn-browser-list { display: flex; flex: 1 1 0; flex-direction: column; gap: 5px; min-height: 0; overflow-x: hidden; overflow-y: auto; padding: 4px 8px 24px 16px; scrollbar-width: thin; scrollbar-color: var(--scrollbar-auto-thumb, var(--background-modifier-hover)) var(--scrollbar-auto-track, transparent); }
+.tn-browser-list::-webkit-scrollbar { width: 8px; }
+.tn-browser-list::-webkit-scrollbar-thumb { border-radius: 4px; background: var(--scrollbar-auto-thumb, var(--background-modifier-hover)); }
+.tn-browser-list::-webkit-scrollbar-track { background: var(--scrollbar-auto-track, transparent); }
+.tn-item { display: flex; flex-shrink: 0; align-items: center; gap: 8px; width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid var(--border-subtle); border-radius: 7px; background: var(--background-base-lower); color: var(--text-default); }
 .tn-item:hover { background: var(--background-modifier-hover); }
 .tn-item-selected { border-color: var(--brand-500); background: var(--background-modifier-selected); }
 .tn-item-link { display: block; min-width: 0; flex: 1; color: inherit; text-decoration: none; }
@@ -285,16 +291,6 @@ module.exports = class ThreadNavigator {
 		discover.addEventListener("click", () => this.openNativeDiscovery());
 		controls.append(search, filter, discover);
 		this.browserList = node("div", "tn-browser-list");
-		const scrollerSelector = '[class*="scrollerBase"][class*="auto_"]';
-		const nativeScroller =
-			chat.querySelector(scrollerSelector) ??
-			document.querySelector(scrollerSelector);
-		const nativeScrollClasses = [...(nativeScroller?.classList ?? [])].filter(
-			(name) => /^(scrollerBase|auto|customTheme)_/.test(name),
-		);
-		if (nativeScrollClasses.length >= 2)
-			this.browserList.classList.add(...nativeScrollClasses);
-		else this.browserList.style.overflowY = "auto";
 		this.browserList.addEventListener("scroll", () => {
 			if (this.browserLimit >= (this.browserTotal ?? 0)) return;
 			if (
